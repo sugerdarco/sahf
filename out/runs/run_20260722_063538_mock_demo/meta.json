@@ -1,0 +1,9 @@
+{
+  "models": [
+    "honest-agent-1",
+    "honest-agent-2",
+    "POISONED[invert](honest-agent-3)"
+  ],
+  "prompt": "[mock demo \u2014 no real prompt/tokenizer]",
+  "note": "2 honest mock agents + 1 agent poisoned via PoisonedAgentWrapper(mode='invert'), to exercise Stage 6/7 with a real honest MAJORITY (N=3)."
+}

@@ -10,7 +10,7 @@ from .amplitude import softmax_to_amplitude
 from .gate import GateThresholds, GateDecision, divergence_gate
 from .fusion import fast_mean_fusion
 from .robust import detect_outliers, weiszfeld_geometric_median
-from .agents import HFAgent, MockAgent
+from .agents import HFAgent, MockAgent, PoisonedAgentWrapper, assert_shared_vocab_size
 from .orchestrator import FusionOrchestrator
 from .logger import RunLogger
 
@@ -24,6 +24,8 @@ __all__ = [
     "weiszfeld_geometric_median",
     "HFAgent",
     "MockAgent",
+    "PoisonedAgentWrapper",
+    "assert_shared_vocab_size",
     "FusionOrchestrator",
     "RunLogger",
 ]

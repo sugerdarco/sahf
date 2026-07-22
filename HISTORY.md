@@ -7,6 +7,68 @@ than rewriting history.
 
 ---
 
+## 2026-07-22 — v0.2: fix — default config didn't have enough agents to prove Stage 7's own claim
+
+**The gap, stated precisely:** v0.1 shipped with 2 real agents by default. All
+25 (then 18) tests passed, `demo_mock_run.py` ran cleanly — but Stage 7's
+entire justification is "an honest majority overrules a corrupted minority,"
+and 2 agents can never have a majority on either side. Tests passing at N=2
+proved the *code* was correct, not that the *claim* was true. This was flagged
+directly rather than found by digging, and it was right — the fix below is a
+real behavior change, not just added documentation.
+
+**Fix, part 1: `config.yaml` now defaults to 3 agents**, not 2 — Qwen2.5-0.5B +
+1.5B + 3B (Instruct). Reason for this specific triple over other options: still
+comfortably same tokenizer family, still small (~10GB combined bf16, safely
+under the 24GB budget, barely more than the old 2-model default), and 3
+meaningfully different capability tiers rather than 3 near-duplicates.
+Rejected keeping N=2 and only fixing this in documentation — a caveat that
+says "this doesn't really work at N=2, but N=2 is the default" is not a fix.
+
+**Fix, part 2: added `PoisonedAgentWrapper`** (`sahf/agents.py`). Reason: even
+with 3 *honest* real models, there's no guarantee they'll disagree enough,
+naturally, to ever exercise Stage 6/7 at all — you could run this for a long
+time and never actually see the escalation path fire, let alone verify it
+recovers correctly. Rather than waiting/hoping, this wraps any agent (real or
+mock) and deliberately corrupts its logits on demand, so the exact condition
+Stage 7 is supposed to survive can be forced and checked, on purpose, on real
+hardware. Three modes were added (`invert`, `uniform_noise`, `random_bias`);
+`invert` was chosen as the CLI default because it's the most realistic
+failure — a well-formed distribution that's just confidently wrong, not an
+obviously-broken one, which is closer to what an actually-misbehaving model
+would look like than pure noise.
+
+**Fix, part 3: extracted the tokenizer-match check into
+`assert_shared_vocab_size()`.** This existed before only as an inline set
+comprehension inside `run.py`'s `main()`, untested on its own. Writing a real
+unit test for it surfaced a second, smaller latent bug: the original check
+used `len(agent.tokenizer)`, which would have crashed (`len(None)`) the moment
+anyone tried to run it against a `MockAgent`, since mocks have no real
+tokenizer object. Fixed by giving every agent type (including
+`PoisonedAgentWrapper`, which forwards from whatever it wraps) a `.vocab_size`
+attribute, and comparing that instead. Small thing, but exactly the kind of
+gap that only shows up when you actually try to write the test rather than
+trust that the check "obviously" works.
+
+**Decided against:** a `weights:` field in `config.yaml` for trusting some
+agents more than others. Still explicitly a v2 problem (see the v0.1 entry
+below) — didn't want to bundle an unrelated feature into a fix for the N≥3
+gap.
+
+**New test added:**
+`tests/test_agents.py::test_n3_orchestrator_survives_wrapped_poisoning_via_production_mechanism`
+is the one that actually closes the original gap — 3 agents, one wrapped with
+the real `PoisonedAgentWrapper` class (not a hand-crafted biased mock, unlike
+the v0.1 orchestrator test), asserting the honest majority's token wins at
+every step through the same code path `run.py` uses. `demo_mock_run.py` was
+also rewritten to use `PoisonedAgentWrapper` instead of a manually-biased
+mock, so the no-GPU demo now dogfoods the identical mechanism intended for
+real runs, rather than a parallel one-off.
+
+All 25 tests pass (18 from v0.1 + 7 new in `tests/test_agents.py`).
+
+---
+
 ## 2026-07-22 — v0.1: initial fast-version prototype
 
 **Scope decision: 2 agents, shared tokenizer, single machine.**

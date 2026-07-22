@@ -1,3 +1,3 @@
-2026-07-22 06:21:03,983 [INFO] Starting mock demo run (no GPU / internet required).
-2026-07-22 06:21:03,984 [INFO] Run directory: out/runs/run_20260722_062103_mock_demo
-2026-07-22 06:21:04,037 [INFO] Done: 10 steps, 0 fast-path, 10 escalated.
+2026-07-22 06:35:38,160 [INFO] Starting mock demo run (no GPU / internet required).
+2026-07-22 06:35:38,161 [INFO] Run directory: out/runs/run_20260722_063538_mock_demo
+2026-07-22 06:35:38,192 [INFO] Done: 10 steps, 0 fast-path, 10 escalated, 10/10 steps recovered the honest-majority token despite poisoning.

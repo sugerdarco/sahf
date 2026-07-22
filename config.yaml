@@ -1,6 +1,10 @@
-# Default "fast version" config: 2 agents sharing one tokenizer, sized to fit
-# comfortably in 24GB VRAM. See README.md "Choosing models" for alternatives.
+# Default "fast version" config: 3 agents sharing one tokenizer (Qwen2.5
+# family), sized to fit comfortably in 24GB VRAM. Bumped from 2 to 3 agents
+# because Stage 7's robustness guarantee (breakdown point 1/2) needs an
+# honest MAJORITY to mean anything -- that requires N >= 3. See HISTORY.md
+# entry "N=3 by default" and ARCHITECTURE.md for the full reasoning.
 models:
+  - "Qwen/Qwen2.5-0.5B-Instruct"
   - "Qwen/Qwen2.5-1.5B-Instruct"
   - "Qwen/Qwen2.5-3B-Instruct"
 

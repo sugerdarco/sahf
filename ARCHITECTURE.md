@@ -59,7 +59,7 @@ iteration count are written to `steps.jsonl` — see README.md for the log forma
 | `sahf/gate.py` | 2 | entropy + pairwise spread → agree/disagree |
 | `sahf/fusion.py` | 5 | weighted chordal mean on the sphere |
 | `sahf/robust.py` | 6, 7 | MAD outlier screen; Weiszfeld geometric median |
-| `sahf/agents.py` | — | `HFAgent` (real transformers model) / `MockAgent` (no GPU/internet) |
+| `sahf/agents.py` | — | `HFAgent` (real model) / `MockAgent` (no GPU/internet) / `PoisonedAgentWrapper` (deliberate corruption, for testing Stage 6/7) / `assert_shared_vocab_size` (fail-loudly tokenizer check) |
 | `sahf/orchestrator.py` | — | wires 1→2→(3│5→6→7) into the per-token loop |
 | `sahf/logger.py` | — | everything → `out/` |
 
@@ -95,19 +95,39 @@ cascading-cost philosophy: get the cheap-vs-expensive *decision logic* right
 first, optimize the *constant factors* second. Tracked as the top follow-up in
 `HISTORY.md`.
 
-**N=2 weakens the Stage 6/7 robustness story.** The geometric median's real
-selling point — breakdown point 1/2, i.e. it survives up to just under half the
-agents being adversarial — requires an honest *majority*. At N=2, if the two
-agents disagree, "outlier detection" can only ever say "one of you is further
-from the average than the other," which is not the same claim as "the honest
-majority overrules the corrupted minority." The code runs correctly at N=2
-(and is tested at N=2), but the interesting Byzantine-robustness test
-(`test_three_agents_one_poisoned_escalates_and_recovers_majority_token` in
-`tests/test_orchestrator_mock.py`) intentionally uses N=3 mock agents, because
-that's the smallest N where the claim is actually true. Adding a real or mock
-3rd agent to `config.yaml`-driven runs is a small change (the orchestrator
-already accepts any N ≥ 2) — the code doesn't assume exactly two agents
-anywhere except the tokenizer-match check in `run.py`.
+**N must be ≥ 3 for Stage 6/7's robustness claim to mean anything — this is why
+the default config ships 3 agents, not 2.** The geometric median's real selling
+point — breakdown point 1/2, i.e. it survives up to just under half the agents
+being adversarial — requires an honest *majority*. At N=2, if the two agents
+disagree, "outlier detection" can only ever say "one of you is further from
+the average than the other," which is not the same claim as "the honest
+majority overrules the corrupted minority." There is no honest-vs-corrupted
+distinction to make with only one vote on each side.
+
+This was caught as a real gap after the first version of this prototype
+shipped with a 2-agent default (see `HISTORY.md`, 2026-07-22 entries) — the
+code ran and the tests passed at N=2, but passing tests at N=2 cannot actually
+demonstrate the claim Stage 7 exists to make. The fix has two parts:
+
+1. **`config.yaml` now defaults to 3 agents** (Qwen2.5-0.5B + 1.5B + 3B), so a
+   real run has an honest majority to fall back on if one agent misbehaves.
+2. **`PoisonedAgentWrapper`** (`sahf/agents.py`) wraps any agent — real or
+   mock — and deliberately corrupts its logits (`invert`, `uniform_noise`, or
+   `random_bias` modes), so Stage 6/7 can be exercised under a *guaranteed*
+   adversarial condition instead of hoping 3 honest models happen to disagree
+   enough on their own. `run.py --poison-index N --poison-mode invert` applies
+   it to a real run; `demo_mock_run.py` applies it to a mock run. Poisoning is
+   always recorded in `meta.json` (`"poisoning": null` for a clean run) —
+   never silent.
+
+The orchestrator itself never assumed exactly two agents — it accepts any
+N ≥ 2 and always has (`sahf/orchestrator.py` has no N=2-specific logic
+anywhere). The gap was entirely in the *default config* and in not having a
+reliable way to *prove* the N≥3 claim rather than just assert it. Both are
+fixed. `tests/test_agents.py::test_n3_orchestrator_survives_wrapped_poisoning_via_production_mechanism`
+is the test that actually closes this — it runs 3 agents, wraps one with
+`PoisonedAgentWrapper` (the exact class `run.py` uses, not a hand-crafted
+biased mock), and asserts the honest majority's token wins at every step.
 
 ## What would need to change for the full 8-stage version
 
@@ -121,8 +141,9 @@ anywhere except the tokenizer-match check in `run.py`.
    and catch up over multiple of its own steps — only actually necessary once
    tokenizers differ; with a shared tokenizer this is a non-issue since the
    consensus token *is* one of that agent's own tokens by construction).
-4. **N ≥ 3 agents** to make Stage 7's robustness guarantee meaningful in a real
-   (not mock) run.
+4. ~~**N ≥ 3 agents** to make Stage 7's robustness guarantee meaningful in a
+   real (not mock) run.~~ **Done** — default config now ships 3 agents, plus
+   `PoisonedAgentWrapper` to test it under controlled adversarial conditions.
 5. **Threshold calibration** — `θ_H`, `θ_D`, and the MAD multiplier are current
    best guesses (see HISTORY.md); a real version would sweep these against a
    validation set the way the SAFE paper did, rather than hand-picking them.

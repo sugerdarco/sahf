@@ -1,10 +1,16 @@
 # sahf-lite
 
 A **running prototype** of the SAHF distribution-fusion pipeline, simplified to
-the case that's actually buildable on one machine right now: **2 LLM agents that
-share a tokenizer**, fused token-by-token. See `ARCHITECTURE.md` for exactly what
-that simplifies away, and `HISTORY.md` for a dated log of every design decision
-and why it was made.
+the case that's actually buildable on one machine right now: **N LLM agents
+(default 3) that share a tokenizer**, fused token-by-token. See
+`ARCHITECTURE.md` for exactly what that simplifies away, and `HISTORY.md` for a
+dated log of every design decision and why it was made.
+
+> **N=3 by default, not 2.** Stage 7's whole point — surviving a corrupted
+> agent — only means something with an honest *majority*, which needs N ≥ 3.
+> An earlier version of this defaulted to 2 agents; see `HISTORY.md` for the
+> fix and `ARCHITECTURE.md` for why N=2 can't actually prove the claim even
+> though the code runs fine at that size.
 
 Target hardware: **1 machine, 24GB VRAM, 128GB RAM.**
 
@@ -32,9 +38,10 @@ Hugging Face** (only PyPI is reachable there). So, honestly:
 
 | Piece | Status |
 |---|---|
-| Math kernel (Stages 1, 2, 5, 6, 7) | ✅ 18/18 unit tests passing |
+| Math kernel (Stages 1, 2, 5, 6, 7) | ✅ 25/25 unit tests passing |
 | Orchestrator loop + `out/` logging | ✅ tested end-to-end with mock agents |
-| Real 2-model run (`run.py` + `HFAgent`) | ⬜ **not yet run anywhere** — needs your machine's GPU + internet |
+| Poisoning wrapper + N=3 majority recovery | ✅ tested end-to-end via the actual `PoisonedAgentWrapper` production code path |
+| Real N-model run (`run.py` + `HFAgent`) | ⬜ **not yet run anywhere** — needs your machine's GPU + internet |
 
 The code path for real models is written and should work as-is, but you will be
 the first one to actually run it. Please report back anything that breaks —
@@ -73,18 +80,54 @@ Uses `config.yaml` by default: **Qwen2.5-1.5B-Instruct + Qwen2.5-3B-Instruct**
 
 ## Choosing models for your 24GB budget
 
-Both models must come from the **same tokenizer family** — this is what lets us
-skip Stage 8 entirely. Rough bf16 VRAM budget (weights only; add a few GB for
-activations/KV-cache):
+All configured models must come from the **same tokenizer family** — this is
+what lets us skip Stage 8 entirely. Rough bf16 VRAM budget (weights only; add a
+few GB for activations/KV-cache):
 
-| Pair | Combined VRAM | Notes |
+| Agents | Combined VRAM | Notes |
 |---|---|---|
-| Qwen2.5-1.5B + Qwen2.5-3B (default) | ~9GB | Safest, fastest, good for first run |
-| Qwen2.5-1.5B + Qwen2.5-7B | ~17GB | Bigger capability gap, still fits |
-| Qwen2.5-3B + Qwen2.5-14B | ~31GB | **Too big for 24GB** — don't use both in bf16 |
+| Qwen2.5-0.5B + 1.5B + 3B (default, N=3) | ~10GB | Safest, fastest, good for first run |
+| Qwen2.5-0.5B + 1.5B + 7B (N=3) | ~18GB | Bigger capability gap, still fits |
+| Qwen2.5-1.5B + 3B + 7B (N=3) | ~23GB | Tight — leaves little headroom for KV-cache |
+| Qwen2.5-3B + 3B + 14B (N=3) | ~35GB | **Too big for 24GB** — don't use |
 
-To swap models, edit `config.yaml` — nothing else needs to change as long as
-both entries share a tokenizer.
+To swap models, edit `config.yaml`'s `models:` list — nothing else needs to
+change as long as every entry shares a tokenizer. The orchestrator itself
+doesn't assume any particular N (it works for any N ≥ 2); N=3 is the config
+default specifically because it's the smallest size where Stage 7 is actually
+proving something (see the callout at the top of this file).
+
+## Testing Stage 7 (the median stage) on your own hardware
+
+Don't just trust that 3 honest real models will happen to disagree enough to
+prove the escalation tier works — force the condition it's meant to survive:
+
+```bash
+# Baseline: all 3 configured agents run clean
+python run.py --prompt "What is the capital of France?"
+
+# Same prompt, but agent index 2 (Qwen2.5-3B) is deliberately corrupted
+python run.py --prompt "What is the capital of France?" --poison-index 2 --poison-mode invert
+```
+
+`--poison-mode invert` takes that agent's real logits and negates them — a
+well-formed distribution, still derived from a real model, but confidently
+pushing for whatever the honest models think is *least* likely. Compare the
+two runs' `out/runs/*/result.json` and `steps.jsonl`:
+
+- `meta.json` records exactly which agent was poisoned and how (`poisoning`
+  field; `null` for a clean run) — never silent.
+- `steps.jsonl` shows `"escalated": true` and `"outliers": [false, false,
+  true]` at the steps where the poisoned agent got caught.
+- With a real honest majority, the final output text should be close to the
+  clean-run baseline despite the poisoning. If it isn't, that's a real signal
+  — either the gate/outlier thresholds need retuning for these specific
+  models, or something in the pipeline needs a second look.
+
+Other `--poison-mode` options: `uniform_noise` (replace the agent's logits with
+pure noise) and `random_bias` (the agent insists on one arbitrary wrong token
+every step) — `invert` is the default because it's the most realistic: it
+doesn't look obviously broken, it just confidently disagrees.
 
 ## Running the tests
 
@@ -113,10 +156,11 @@ sahf_lite/
 │   ├── gate.py                   Stage 2
 │   ├── fusion.py                   Stage 5
 │   ├── robust.py                    Stage 6 + 7
-│   ├── agents.py                     HFAgent (real) + MockAgent (testing)
+│   ├── agents.py                     HFAgent, MockAgent, PoisonedAgentWrapper,
+│   │                                   assert_shared_vocab_size
 │   ├── orchestrator.py                per-token decode loop
 │   └── logger.py                       everything below writes here
-├── tests/                       one file per stage + one end-to-end
+├── tests/                       one file per stage + agents/poisoning + end-to-end
 └── out/                          all results and logs land here
     ├── logs/app.log               process-level log
     └── runs/run_<timestamp>_.../   one folder per run
@@ -133,14 +177,17 @@ sahf_lite/
   a few hundred tokens. This is the top follow-up — see `HISTORY.md`.
 - **Gate thresholds are not calibrated.** `entropy_threshold: 2.0` and
   `divergence_threshold: 0.05` in `config.yaml` are reasonable starting guesses,
-  not fit to any real data from these two models. Expect to tune them after
-  looking at a few real runs' `steps.jsonl` — if Path B fires on almost every
-  token, `divergence_threshold` is probably too tight for this model pair.
-- **N=2 means the escalation tier's robustness guarantee doesn't really apply.**
-  The geometric median is only meaningfully Byzantine-robust with an honest
-  *majority*, i.e. N ≥ 3. With exactly 2 agents, Stage 6/7 still runs (and is
-  tested), but "outlier" just means "further from the mean than the other one" —
-  see `ARCHITECTURE.md`.
+  not fit to any real data from these specific models. Expect to tune them
+  after looking at a few real runs' `steps.jsonl` — if Path B fires on almost
+  every token, `divergence_threshold` is probably too tight for this agent set.
+- **If you drop back to N=2, you lose Stage 7's actual guarantee.** The
+  geometric median is only meaningfully Byzantine-robust with an honest
+  *majority*, i.e. N ≥ 3 — this is *why* the default config now ships 3 agents
+  (see the callout at the top of this file and `HISTORY.md`). The code still
+  runs correctly at N=2, but "outlier" degrades to "further from the mean than
+  the other one," which isn't the same claim. Don't reduce `config.yaml`'s
+  `models:` list below 3 entries unless you're deliberately testing that
+  degraded case.
 - **"Allgather" is just a Python list comprehension.** There's no real
   distributed communication here since everything runs in one process — see
   `ARCHITECTURE.md` for what changes if you ever split agents across machines.
