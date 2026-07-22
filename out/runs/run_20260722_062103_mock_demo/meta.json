@@ -1,0 +1,9 @@
+{
+  "models": [
+    "honest-agent-1",
+    "honest-agent-2",
+    "poisoned-agent"
+  ],
+  "prompt": "[mock demo \u2014 no real prompt/tokenizer]",
+  "note": "2 honest mock agents + 1 poisoned mock agent, to exercise Stage 6/7."
+}

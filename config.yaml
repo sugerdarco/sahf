@@ -1,0 +1,16 @@
+# Default "fast version" config: 2 agents sharing one tokenizer, sized to fit
+# comfortably in 24GB VRAM. See README.md "Choosing models" for alternatives.
+models:
+  - "Qwen/Qwen2.5-1.5B-Instruct"
+  - "Qwen/Qwen2.5-3B-Instruct"
+
+device: "cuda"      # use "cpu" if no GPU is available (slow, but works for testing)
+dtype: "bfloat16"    # use "float32" on CPU
+
+max_new_tokens: 64
+out_dir: "out"
+
+gate:
+  entropy_threshold: 2.0      # theta_H, nats — NOT calibrated yet, see HISTORY.md
+  divergence_threshold: 0.05   # theta_D, on the amplitude/Hellinger scale
+  mad_multiplier: 3.0           # outlier threshold, in median-absolute-deviations
