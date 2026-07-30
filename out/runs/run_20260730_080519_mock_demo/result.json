@@ -1,0 +1,8 @@
+{
+  "prompt": "[mock demo]",
+  "output": "[mock demo has no real decoded text]",
+  "num_steps": 10,
+  "num_fast_path": 0,
+  "num_fusion_path": 10,
+  "num_escalations": 10
+}

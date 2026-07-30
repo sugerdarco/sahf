@@ -1,0 +1,8 @@
+{
+  "prompt": "Name three primary colors and explain what primary colors are.",
+  "output": "Name three primary colors and explain what primary colors are. Primary colors are the basic colors that cannot be created by mixing other colors. They are the foundation of color theory and are used to create other colors through mixing.",
+  "num_steps": 32,
+  "num_fast_path": 32,
+  "num_fusion_path": 0,
+  "num_escalations": 0
+}

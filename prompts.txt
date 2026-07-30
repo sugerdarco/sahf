@@ -1,0 +1,6 @@
+# Sample batch prompts file for SAHF pipeline evaluation
+What is the capital of France?
+Explain the process of photosynthesis in two simple sentences.
+What is 15 multiplied by 12?
+Name three primary colors and explain what primary colors are.
+What is the chemical formula for water?

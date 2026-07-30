@@ -1,0 +1,8 @@
+{
+  "prompt": "What is 15 multiplied by 12?",
+  "output": "What is 15 multiplied by 12? To find the product of 15 multiplied by 12, we can use the standard multiplication method. Here are the steps:\n\n1. Write down the",
+  "num_steps": 32,
+  "num_fast_path": 32,
+  "num_fusion_path": 0,
+  "num_escalations": 0
+}

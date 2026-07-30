@@ -1,0 +1,8 @@
+{
+  "prompt": "What is the capital of France?",
+  "output": "What is the capital of France? The capital of France is Paris. \n\nSome key facts about Paris:\n\n- It is the most populous city in France, with over 2.2 million inhabitants",
+  "num_steps": 32,
+  "num_fast_path": 0,
+  "num_fusion_path": 32,
+  "num_escalations": 32
+}

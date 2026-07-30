@@ -1,0 +1,32 @@
+{"step": 0, "entropy": 1.046875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 16505, "escalated": false, "outliers": []}
+{"step": 1, "entropy": 0.000370025634765625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 73667, "escalated": false, "outliers": []}
+{"step": 2, "entropy": 0.30078125, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 374, "escalated": false, "outliers": []}
+{"step": 3, "entropy": 0.421875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 279, "escalated": false, "outliers": []}
+{"step": 4, "entropy": 0.00238037109375, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 1882, "escalated": false, "outliers": []}
+{"step": 5, "entropy": 0.1572265625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 553, "escalated": false, "outliers": []}
+{"step": 6, "entropy": 0.0034332275390625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 892, "escalated": false, "outliers": []}
+{"step": 7, "entropy": 0.76953125, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 10779, "escalated": false, "outliers": []}
+{"step": 8, "entropy": 1.0546875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 990, "escalated": false, "outliers": []}
+{"step": 9, "entropy": 0.08740234375, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 39020, "escalated": false, "outliers": []}
+{"step": 10, "entropy": 0.6015625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 11, "escalated": false, "outliers": []}
+{"step": 11, "entropy": 0.27734375, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 3015, "escalated": false, "outliers": []}
+{"step": 12, "entropy": 0.07568359375, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 11, "escalated": false, "outliers": []}
+{"step": 13, "entropy": 2.658367156982422e-05, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 323, "escalated": false, "outliers": []}
+{"step": 14, "entropy": 0.0225830078125, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 12499, "escalated": false, "outliers": []}
+{"step": 15, "entropy": 1.5497207641601562e-05, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 39489, "escalated": false, "outliers": []}
+{"step": 16, "entropy": 0.00023174285888671875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 311, "escalated": false, "outliers": []}
+{"step": 17, "entropy": 0.1904296875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 8193, "escalated": false, "outliers": []}
+{"step": 18, "entropy": 0.7578125, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 23552, "escalated": false, "outliers": []}
+{"step": 19, "entropy": 0.0040283203125, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 323, "escalated": false, "outliers": []}
+{"step": 20, "entropy": 0.1748046875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 4802, "escalated": false, "outliers": []}
+{"step": 21, "entropy": 0.07275390625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 304, "escalated": false, "outliers": []}
+{"step": 22, "entropy": 4.696846008300781e-05, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 279, "escalated": false, "outliers": []}
+{"step": 23, "entropy": 1.1444091796875e-05, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 1352, "escalated": false, "outliers": []}
+{"step": 24, "entropy": 0.00016021728515625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 315, "escalated": false, "outliers": []}
+{"step": 25, "entropy": 0.4765625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 13163, "escalated": false, "outliers": []}
+{"step": 26, "entropy": 0.416015625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 13, "escalated": false, "outliers": []}
+{"step": 27, "entropy": 1.4765625, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 151643, "escalated": false, "outliers": []}
+{"step": 28, "entropy": 3.78125, "divergence": 0.0, "path": "B_fusion_pipeline", "token_id": 33975, "escalated": false, "outliers": [false, false, false], "outlier_distances": [0.00119781494140625, 0.00119781494140625, 0.00119781494140625]}
+{"step": 29, "entropy": 1.1796875, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 25, "escalated": false, "outliers": []}
+{"step": 30, "entropy": 3.53125, "divergence": 0.0, "path": "B_fusion_pipeline", "token_id": 2980, "escalated": false, "outliers": [false, false, false], "outlier_distances": [0.000820159912109375, 0.000820159912109375, 0.000820159912109375]}
+{"step": 31, "entropy": 0.0068359375, "divergence": 0.0, "path": "A_fast_passthrough", "token_id": 498, "escalated": false, "outliers": []}

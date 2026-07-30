@@ -1,0 +1,30 @@
+{
+  "models": [
+    "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1"
+  ],
+  "prompt": "what is the biggest ocean.",
+  "config": {
+    "models": [
+      "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1"
+    ],
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "max_new_tokens": 32,
+    "out_dir": "out",
+    "gate": {
+      "entropy_threshold": 2.0,
+      "divergence_threshold": 0.05,
+      "mad_multiplier": 3.0
+    }
+  },
+  "poisoning": {
+    "index": 2,
+    "original_model": "/DATA/hf_cache/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "mode": "invert",
+    "strength": 25.0
+  }
+}

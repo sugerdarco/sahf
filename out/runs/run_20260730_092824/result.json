@@ -1,0 +1,8 @@
+{
+  "prompt": "what is the biggest ocean.",
+  "output": "what is the biggest ocean. The biggest ocean is the Pacific Ocean. It covers about 63 million square miles (163 million square kilometers) and is larger than the Atlantic,",
+  "num_steps": 32,
+  "num_fast_path": 31,
+  "num_fusion_path": 1,
+  "num_escalations": 0
+}

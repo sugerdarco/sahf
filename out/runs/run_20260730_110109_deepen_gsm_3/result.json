@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: Josh decides to try flipping a house.  He buys a house for $80,000 and then puts in $50,000 in repairs.  This increased the value of the house by 150%.  How much profit did he make?\nAnswer step-by-step:",
+  "output": "Question: Josh decides to try flipping a house.  He buys a house for $80,000 and then puts in $50,000 in repairs.  This increased the value of the house by 150%.  How much profit did he make?\nAnswer step-by-step: To determine Josh's profit, we need to follow these steps:\n\n1. **Calculate the total cost of the house and repairs:**\n   - Initial cost of",
+  "num_steps": 32,
+  "num_fast_path": 5,
+  "num_fusion_path": 27,
+  "num_escalations": 27
+}

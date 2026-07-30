@@ -1,0 +1,8 @@
+{
+  "prompt": "What is the chemical formula for water?",
+  "output": "What is the chemical formula for water? The chemical formula for water is H2O. This means that each molecule of water consists of two hydrogen atoms (H) and one oxygen atom (O).",
+  "num_steps": 32,
+  "num_fast_path": 32,
+  "num_fusion_path": 0,
+  "num_escalations": 0
+}
