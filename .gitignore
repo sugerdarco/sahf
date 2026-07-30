@@ -1,0 +1,17 @@
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Execution Output Logs & Downloads
+out/logs/
+out/runs/
+out/evaluation_results/
+models/
+datasets/
+
+# Environment
+.env
+venv/
+.venv/
