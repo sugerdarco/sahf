@@ -1,0 +1,77 @@
+{
+  "dataset": "gsm",
+  "category": "elementary_mathematics",
+  "num_samples": 5,
+  "accuracy_percent": 0.0,
+  "correct_count": 0,
+  "total_time_seconds": 14.62247920036316,
+  "total_tokens": 160,
+  "fast_path_tokens": 35,
+  "fast_path_percent": 21.875,
+  "fusion_tokens": 125,
+  "fusion_percent": 78.125,
+  "escalated_tokens": 125,
+  "escalated_percent": 78.125,
+  "records": [
+    {
+      "idx": 1,
+      "prompt": "Question: Janet\u2019s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+      "generated_text": "Step-by-step reasoning process: Step 1: Calculate the number of eggs Janet has left after eating and baking.\nJanet starts with 16 eggs per",
+      "extracted_prediction": "16",
+      "target_ground_truth": "18",
+      "is_correct": false,
+      "tokens": 32,
+      "fast_tokens": 4,
+      "fusion_tokens": 28,
+      "escalated_tokens": 28
+    },
+    {
+      "idx": 2,
+      "prompt": "Question: A robe takes 2 bolts of blue fiber and half that much white fiber.  How many bolts in total does it take?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+      "generated_text": "Step 1: Determine the amount of white fiber needed.\nThe problem states that the robe takes half as much white fiber as blue fiber. Since it takes",
+      "extracted_prediction": "1",
+      "target_ground_truth": "2",
+      "is_correct": false,
+      "tokens": 32,
+      "fast_tokens": 4,
+      "fusion_tokens": 28,
+      "escalated_tokens": 28
+    },
+    {
+      "idx": 3,
+      "prompt": "Question: Josh decides to try flipping a house.  He buys a house for $80,000 and then puts in $50,000 in repairs.  This increased the value of the house by 150%.  How much profit did he make?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+      "generated_text": "To solve this problem, let's break it down step-by-step:\n\n1. Josh buys the house for $80,000.\n2. He",
+      "extracted_prediction": "2",
+      "target_ground_truth": "120000",
+      "is_correct": false,
+      "tokens": 32,
+      "fast_tokens": 8,
+      "fusion_tokens": 24,
+      "escalated_tokens": 24
+    },
+    {
+      "idx": 4,
+      "prompt": "Question: James decides to run 3 sprints 3 times a week.  He runs 60 meters each sprint.  How many total meters does he run a week?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+      "generated_text": "Step 1: Calculate the total meters James runs in one sprint.\nJames runs 60 meters in each sprint.\n\nStep 2: Calculate the total meters",
+      "extracted_prediction": "2",
+      "target_ground_truth": "540",
+      "is_correct": false,
+      "tokens": 32,
+      "fast_tokens": 9,
+      "fusion_tokens": 23,
+      "escalated_tokens": 23
+    },
+    {
+      "idx": 5,
+      "prompt": "Question: Every day, Wendi feeds each of her chickens three cups of mixed chicken feed, containing seeds, mealworms and vegetables to help keep them healthy.  She gives the chickens their feed in three separate meals. In the morning, she gives her flock of chickens 15 cups of feed.  In the afternoon, she gives her chickens another 25 cups of feed.  How many cups of feed does she need to give her chickens in the final meal of the day if the size of Wendi's flock is 20 chickens?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+      "generated_text": "Step 1: Calculate the total amount of feed given in the morning and afternoon.\nMorning feed: 15 cups\nAfternoon feed: 25",
+      "extracted_prediction": "25",
+      "target_ground_truth": "20",
+      "is_correct": false,
+      "tokens": 32,
+      "fast_tokens": 10,
+      "fusion_tokens": 22,
+      "escalated_tokens": 22
+    }
+  ]
+}

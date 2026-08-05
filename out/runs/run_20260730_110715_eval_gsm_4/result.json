@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: James decides to run 3 sprints 3 times a week.  He runs 60 meters each sprint.  How many total meters does he run a week?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+  "output": "Step 1: Calculate the total meters James runs in one sprint.\nJames runs 60 meters in each sprint.\n\nStep 2: Calculate the total meters",
+  "num_steps": 32,
+  "num_fast_path": 9,
+  "num_fusion_path": 23,
+  "num_escalations": 23
+}

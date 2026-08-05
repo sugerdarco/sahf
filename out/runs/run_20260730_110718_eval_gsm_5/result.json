@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: Every day, Wendi feeds each of her chickens three cups of mixed chicken feed, containing seeds, mealworms and vegetables to help keep them healthy.  She gives the chickens their feed in three separate meals. In the morning, she gives her flock of chickens 15 cups of feed.  In the afternoon, she gives her chickens another 25 cups of feed.  How many cups of feed does she need to give her chickens in the final meal of the day if the size of Wendi's flock is 20 chickens?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+  "output": "Step 1: Calculate the total amount of feed given in the morning and afternoon.\nMorning feed: 15 cups\nAfternoon feed: 25",
+  "num_steps": 32,
+  "num_fast_path": 10,
+  "num_fusion_path": 22,
+  "num_escalations": 22
+}

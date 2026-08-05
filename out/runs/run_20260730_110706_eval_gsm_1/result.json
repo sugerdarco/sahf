@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: Janet\u2019s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?\nSolve step-by-step and write the final answer number clearly.\nAnswer:",
+  "output": "Step-by-step reasoning process: Step 1: Calculate the number of eggs Janet has left after eating and baking.\nJanet starts with 16 eggs per",
+  "num_steps": 32,
+  "num_fast_path": 4,
+  "num_fusion_path": 28,
+  "num_escalations": 28
+}

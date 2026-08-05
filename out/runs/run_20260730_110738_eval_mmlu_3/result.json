@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: A total of 30 players will play basketball at a park. There will be exactly 5 players on each team. Which statement correctly explains how to find the number of teams needed?\nOptions:\nA) Add 5 to 30 to find 35 teams.\nB) Divide 30 by 5 to find 6 teams.\nC) Multiply 30 and 5 to find 150 teams.\nD) Subtract 5 from 30 to find 25 teams.\nIdentify the correct option (A, B, C, or D).\nAnswer:",
+  "output": "To determine the correct number of teams needed, we need to divide the total number of players by the number of players per team.\n\nStep 1: Identify the",
+  "num_steps": 32,
+  "num_fast_path": 9,
+  "num_fusion_path": 23,
+  "num_escalations": 23
+}

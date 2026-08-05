@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: Olivia used the rule \"Add 11\" to create the number pattern shown below. 10, 21, 32, 43, 54 Which statement about the number pattern is true?\nOptions:\nA) The 10th number in the pattern will be an even number.\nB) The number pattern will never have two even numbers next to each other.\nC) The next two numbers in the pattern will be an even number then an odd number.\nD) If the number pattern started with an odd number then the pattern would have only odd numbers in it.\nIdentify the correct option (A, B, C, or D).\nAnswer:",
+  "output": "Let's analyze each option based on the given number pattern: 10, 21, 32, 43, 54.",
+  "num_steps": 32,
+  "num_fast_path": 17,
+  "num_fusion_path": 15,
+  "num_escalations": 15
+}

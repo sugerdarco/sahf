@@ -1,0 +1,8 @@
+{
+  "prompt": "Question: A store sells 107 different colors of paint. They have 25 cans of each color in storage. The number of cans of paint the store has in storage can be found using the expression below. 107 \u00d7 25. How many cans of paint does the store have in storage?\nOptions:\nA) 749\nB) 2,675\nC) 2,945\nD) 4,250\nIdentify the correct option (A, B, C, or D).\nAnswer:",
+  "output": "To find the total number of cans of paint in storage, we need to multiply the number of different colors of paint by the number of cans of each color.",
+  "num_steps": 32,
+  "num_fast_path": 8,
+  "num_fusion_path": 24,
+  "num_escalations": 24
+}

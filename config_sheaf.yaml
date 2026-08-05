@@ -1,0 +1,54 @@
+# Stage 8 config: 3 agents from DIFFERENT model families, deliberately NOT
+# sharing a tokenizer. This is the case config.yaml's shared-vocab assertion
+# rejects and Stage 8 exists to handle.
+#
+# Kept as a separate file so config.yaml (Stages 1-7) is untouched.
+models:
+  - "Qwen/Qwen2.5-1.5B-Instruct"        # byte-level BPE, ~151k
+  - "meta-llama/Llama-3.2-1B-Instruct"  # byte-level BPE, ~128k
+  - "google/gemma-2-2b-it"              # sentencepiece, ~256k
+
+device: "cuda"      # use "cpu" if no GPU is available (slow, but works for testing)
+dtype: "bfloat16"   # use "float32" on CPU
+
+out_dir: "out"
+
+gate:
+  entropy_threshold: 2.0      # theta_H for Stages 1-7, kept for reference. Stage 8
+                              # does NOT use it; see byte_entropy_threshold below.
+  divergence_threshold: 0.05  # theta_D, on the amplitude/Hellinger scale. Taken as
+                              # the max over ALL tree nodes, not just the root.
+  mad_multiplier: 3.0         # Stage 6 outlier threshold, same rule as config.yaml
+
+sheaf:
+  # The byte-prefix tree is a property of the ensemble's vocabularies, not of any
+  # prompt, so it is built ONCE by a separate command and loaded here:
+  #     python build_prefix_tree.py
+  # Rebuild it whenever `models` changes; run_sheaf.py refuses to start if the
+  # artifact was built for a different model list.
+  tree_path: "artifacts/prefix_tree.npz"
+
+  # theta_H for the BYTE space. Entropy over 256 bytes tops out at ln(256)=5.55,
+  # against ln(151000)=11.9 for a modern vocabulary, so config.yaml's 2.0 does not
+  # transfer. Measured byte-space root entropy sits either near 0 (the first byte
+  # is near-deterministic, which is common -- byte-level tokenizers put a leading
+  # space on most word-initial tokens) or in a 2.3-2.7 nat band. At 2.0 the
+  # condition is effectively a constant in both regimes and divergence carries the
+  # routing decision. Left at 2.0 because that fails toward Path B (full fusion,
+  # slower but never less robust). Calibrate from the `entropy` field in
+  # out/runs/*/steps.jsonl once you have run real models.
+  byte_entropy_threshold: 2.0
+
+  # Top-k width per agent. Benchmarked: output quality is flat from k=8 to k=256
+  # while cost grows 23x, because a single step cannot exceed the mean token
+  # length (~3.3 bytes) of lookahead. See docs/STAGE8_BENCHMARK_RESULTS.md.
+  top_k: 16
+
+  # How many agents must still see past a prefix for its next byte to be emitted.
+  # null = simple majority. Set to the agent count for unanimous, which raises
+  # emission precision from ~48% to ~72% at the cost of shorter chunks.
+  min_support: null
+
+  # Byte budget per generation, the analogue of max_new_tokens. Bytes, not tokens:
+  # with mismatched tokenizers there is no shared token to count.
+  max_new_bytes: 256
