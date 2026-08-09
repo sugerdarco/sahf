@@ -67,12 +67,14 @@ sahf/
     orchestrator.py SheafOrchestrator — the per-token decode loop
     demo.py         three offline scenarios
 
-run_sheaf.py                      generate from a prompt
-build_prefix_tree.py              optional one-time tree artifact
-run_batch_prompts.py              many prompts, models loaded once
-run_deepen_benchmark.py           one dataset (gsm / mmlu / arc), fine-grained control
-run_full_evaluation_experiment.py full clean-vs-poisoned sweep + plots
-demo_sheaf_mock_run.py            offline example run
+run_sheaf.py            generate from a prompt
+build_prefix_tree.py    optional one-time tree artifact
+run_batch_prompts.py    many prompts, models loaded once
+demo_sheaf_mock_run.py  offline example run
+
+deepen/                 everything for benchmarking against DeePEn — the two
+                        evaluation runners, their results and charts, and the
+                        datasets directory. Nothing in sahf/ depends on it.
 
 config_sheaf.yaml   the only config; models, thresholds, Stage 8 settings
 audit/              two adversarial audit harnesses, non-zero exit on defect
@@ -147,4 +149,5 @@ costs more here than it would with a shared tokenizer.
 | `docs/STAGE8_AUDIT_REPORT.md` | library audit — 9 defects found and fixed |
 | `docs/STAGE8_INTEGRATION_AUDIT.md` | integration audit — 9 issues, 8 fixed |
 | `docs/STAGE8_BENCHMARK_RESULTS.md` | isolated Stage 8 timing |
+| `deepen/README.md` | benchmarking against DeePEn: datasets, how to run, how to read the results |
 | `ARCHITECTURE.md`, `HISTORY.md` | historical record of the removed single-tokenizer design |

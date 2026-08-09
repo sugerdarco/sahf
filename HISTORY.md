@@ -213,3 +213,30 @@ existing result files should not be assumed to have come from the Stage 8 path.
 `gate.py`, `fusion.py`, `robust.py`, `agents.py` and `logger.py` are all retained
 unchanged apart from the removed guard — Stage 8 uses every one of them.
 
+---
+
+## DeePEn benchmarking moved into deepen/
+
+The DeePEn comparison is a separate concern from the pipeline, so it now lives in
+its own folder rather than scattered across the repository root and `out/`.
+
+**Moved:** `run_deepen_benchmark.py` and `run_full_evaluation_experiment.py` into
+`deepen/`; `out/evaluation_results/{verbose,charts}` and the two
+`*_eval_summary.json` files into `deepen/results/`. `run_batch_prompts.py` stayed
+at the root — it runs arbitrary prompts and has nothing to do with DeePEn.
+
+**Paths are now anchored to the script rather than the working directory**, so
+both runners behave identically whether invoked from the repository root or from
+inside `deepen/`. Datasets resolve to `deepen/datasets/` if present and fall back
+to a top-level `datasets/`, so an existing checkout keeps working. Results are
+written beside the scripts; per-step run logs still go to the shared `out/runs/`
+tree in the same format as every other run.
+
+`deepen/datasets/` is a placeholder — DeePEn's benchmark data is not vendored here
+and must be fetched from the DeePEn project. `deepen/README.md` documents the
+expected layout, how to run both scripts, and the two caveats that apply to the
+committed results: the accuracy comparison is not settled at these sample sizes,
+and the provenance of the existing result files predates the Stage 8 port.
+
+Nothing under `sahf/` depends on `deepen/`.
+

@@ -15,12 +15,33 @@ Saves verbose per-question step data, JSON summaries, and auto-generates benchma
 import argparse
 import json
 import os
+import sys
 import re
 from pathlib import Path
 import time
 import torch
 import yaml
 import matplotlib.pyplot as plt
+
+# This script lives in deepen/, so paths are anchored explicitly rather than
+# resolved against the current working directory — it runs the same whether it is
+# invoked from the repository root or from inside this folder.
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+#: DeePEn's benchmark data is NOT vendored in this repository. Fetch it from the
+#: DeePEn project and place it at deepen/datasets/ (or at the repository root),
+#: keeping DeePEn's own layout: GSM/data/, MMLU/dev-jsonl/, ARC-Challenge/.
+DATASETS = HERE / "datasets" if (HERE / "datasets").exists() else ROOT / "datasets"
+
+#: Benchmark outputs stay beside the scripts that produce them.
+RESULTS = HERE / "results"
+
+#: Per-step run logs keep using the shared out/ tree at the repository root, so
+#: they stay in the same format and place as every other run.
+OUT_ROOT = ROOT / "out"
 
 from sahf.agents import HFAgent, PoisonedAgentWrapper
 from sahf.gate import GateThresholds
@@ -67,7 +88,7 @@ def parse_model_mcq_answer(text: str) -> str:
 
 
 def load_dataset_samples(dataset_name: str, category: str = "elementary_mathematics", num_samples: int = 15):
-    base_dir = "datasets"
+    base_dir = str(DATASETS)
     samples = []
 
     if dataset_name == "gsm":
@@ -136,17 +157,19 @@ def load_dataset_samples(dataset_name: str, category: str = "elementary_mathemat
     return samples[:num_samples]
 
 
-def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, config_file: str, poison: bool = False):
+def run_benchmark_eval(dataset_name: str, category: str, num_samples: int,
+                       config_file: str = None, poison: bool = False):
     samples = load_dataset_samples(dataset_name, category, num_samples)
     mode_str = "POISONED" if poison else "CLEAN"
     print(f"\n==================================================================")
     print(f"RUNNING BENCHMARK [{mode_str}]: {dataset_name.upper()} ({len(samples)} samples)")
     print(f"==================================================================")
 
+    config_file = config_file or str(ROOT / "config_sheaf.yaml")
     with open(config_file) as f:
         cfg = yaml.safe_load(f)
 
-    setup_app_logging(cfg.get("out_dir", "out"))
+    setup_app_logging(str(OUT_ROOT))
     dtype = getattr(torch, cfg["dtype"])
     raw_agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
 
@@ -198,7 +221,7 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
     start_t = time.time()
     for idx, sample in enumerate(samples, 1):
         run_lbl = f"eval_{dataset_name}_{'poison' if poison else 'clean'}_{idx}"
-        logger = RunLogger(out_dir=cfg.get("out_dir", "out"), run_label=run_lbl)
+        logger = RunLogger(out_dir=str(OUT_ROOT), run_label=run_lbl)
         orchestrator = SheafOrchestrator(
             agents, thresholds,
             max_new_bytes=sheaf_cfg.get("max_new_bytes", 256),
@@ -279,7 +302,7 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
         "verbose_records": records
     }
 
-    out_dir = "out/evaluation_results/verbose"
+    out_dir = str(RESULTS / "verbose")
     os.makedirs(out_dir, exist_ok=True)
     out_file = os.path.join(out_dir, f"{dataset_name}_{'poison' if poison else 'clean'}_results.json")
     with open(out_file, "w", encoding="utf-8") as f:
@@ -290,7 +313,7 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
 
 
 def generate_benchmark_plots(all_results):
-    charts_dir = "out/evaluation_results/charts"
+    charts_dir = str(RESULTS / "charts")
     os.makedirs(charts_dir, exist_ok=True)
 
     # Chart 1: Accuracy Comparison (Clean vs Poisoned)
@@ -350,7 +373,7 @@ def generate_benchmark_plots(all_results):
 
 def main():
     parser = argparse.ArgumentParser(description="Run Full Evaluation Experiments across DeePEn Benchmarks")
-    parser.add_argument("--config", default="config_sheaf.yaml")
+    parser.add_argument("--config", default=str(ROOT / "config_sheaf.yaml"))
     parser.add_argument("--num-samples", type=int, default=10)
     args = parser.parse_args()
 

@@ -1,0 +1,2 @@
+DeePEn's benchmark data goes here — it is not vendored in this repository.
+See ../README.md for the expected layout (GSM/, MMLU/, ARC-Challenge/).

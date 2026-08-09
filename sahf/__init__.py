@@ -13,7 +13,8 @@ byte-prefix space, and Stages 1/5/6/7 then run per node inside it.
   sahf.sheaf       Stage 8 — byte-prefix reconciliation and the decode loop
 
 Entry points: run_sheaf.py (generate), build_prefix_tree.py (optional prebuilt
-tree), run_full_evaluation_experiment.py (benchmarks).
+tree), run_batch_prompts.py (many prompts). Benchmarking against DeePEn lives in
+deepen/ and nothing here depends on it.
 
 The single-tokenizer variant (FusionOrchestrator, run.py, config.yaml) has been
 removed — with a shared tokenizer there is no vocabulary mismatch to resolve, and

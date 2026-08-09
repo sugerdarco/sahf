@@ -12,3 +12,7 @@ benchmarks/tokenizers/
 
 # prefix-tree artifact — rebuilt by build_prefix_tree.py
 artifacts/
+
+# DeePEn benchmark data — fetched separately, see deepen/README.md
+deepen/datasets/*
+!deepen/datasets/.gitkeep

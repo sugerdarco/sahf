@@ -15,10 +15,31 @@ Usage:
 import argparse
 import json
 import os
+import sys
 import time
 from pathlib import Path
 import torch
 import yaml
+
+# This script lives in deepen/, so paths are anchored explicitly rather than
+# resolved against the current working directory — it runs the same whether it is
+# invoked from the repository root or from inside this folder.
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+#: DeePEn's benchmark data is NOT vendored in this repository. Fetch it from the
+#: DeePEn project and place it at deepen/datasets/ (or at the repository root),
+#: keeping DeePEn's own layout: GSM/data/, MMLU/dev-jsonl/, ARC-Challenge/.
+DATASETS = HERE / "datasets" if (HERE / "datasets").exists() else ROOT / "datasets"
+
+#: Benchmark outputs stay beside the scripts that produce them.
+RESULTS = HERE / "results"
+
+#: Per-step run logs keep using the shared out/ tree at the repository root, so
+#: they stay in the same format and place as every other run.
+OUT_ROOT = ROOT / "out"
 
 from sahf.agents import HFAgent, PoisonedAgentWrapper
 from sahf.gate import GateThresholds
@@ -32,7 +53,7 @@ from sahf.sheaf import (
 
 
 def load_deepen_samples(dataset_type: str, category: str = None, max_questions: int = 10):
-    base_dir = "datasets"
+    base_dir = str(DATASETS)
     samples = []
 
     if dataset_type == "gsm":
@@ -75,7 +96,7 @@ def load_deepen_samples(dataset_type: str, category: str = None, max_questions: 
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate SAHF on DeePEn benchmarks.")
-    parser.add_argument("--config", default="config_sheaf.yaml")
+    parser.add_argument("--config", default=str(ROOT / "config_sheaf.yaml"))
     parser.add_argument("--dataset", choices=["gsm", "mmlu", "arc"], default="gsm")
     parser.add_argument("--category", default="elementary_mathematics", help="Category for MMLU benchmark.")
     parser.add_argument("--max-questions", type=int, default=5, help="Number of questions to evaluate.")
@@ -89,7 +110,7 @@ def main():
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
-    app_log = setup_app_logging(cfg.get("out_dir", "out"))
+    app_log = setup_app_logging(str(OUT_ROOT))
     app_log.info(f"Loading agents for DeePEn benchmark evaluation: {cfg['models']}")
 
     dtype = getattr(torch, cfg["dtype"])
@@ -139,7 +160,7 @@ def main():
         print(f"[{idx}/{len(samples)}] Prompt:\n{sample['prompt']}")
         print(f"--------------------------------------------------")
 
-        logger = RunLogger(out_dir=cfg.get("out_dir", "out"), run_label=f"deepen_{args.dataset}_{idx}")
+        logger = RunLogger(out_dir=str(OUT_ROOT), run_label=f"deepen_{args.dataset}_{idx}")
         orchestrator = SheafOrchestrator(
             agents, thresholds,
             max_new_bytes=sheaf_cfg.get("max_new_bytes", 256),
