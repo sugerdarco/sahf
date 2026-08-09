@@ -2,10 +2,8 @@
 The mismatched-tokenizer path, end to end, with REAL tokenizers and REAL torch
 forward passes — no network, no GPU.
 
-This is the case the repo did not previously have: `config.yaml` runs three Qwen
-sizes that share one tokenizer, `run.py` asserts that they do, and every other
-Stage 8 test uses `StaticAgent` with synthetic byte vocabularies. None of those
-exercise `UpstreamAgent`, which is the piece that actually bridges
+Every other Stage 8 test uses `StaticAgent` with synthetic byte vocabularies,
+which does not exercise `UpstreamAgent` — the piece that actually bridges
 `sahf.agents`-style agents to Stage 8 — encoding the shared context separately
 per tokenizer, applying Stage 1, and dropping stop-token mass.
 
@@ -256,7 +254,7 @@ def test_distinct_tokenizer_guard_passes_on_mismatched_agents(mixed_agents):
 
 
 def test_distinct_tokenizer_guard_warns_when_stage8_is_pointless():
-    """If everyone shares a tokenizer, run.py is the right tool, not Stage 8."""
+    """If everyone shares a tokenizer, Stage 8 is overhead and should say so."""
     from sahf.sheaf import assert_distinct_tokenizers
 
     shim = _bpe_shim()

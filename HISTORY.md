@@ -155,3 +155,61 @@ array) so a run can be tailed while still in progress and a crash mid-generation
 doesn't corrupt everything collected so far. Kept `meta.json` (config used) and
 `result.json` (final summary) separate from the step-by-step trace so a quick
 "how did this run go" check doesn't require parsing the full trace.
+
+---
+
+## Cross-tokenizer only — single-tokenizer variant removed
+
+The project now targets exclusively ensembles whose agents do **not** share a
+tokenizer. The single-tokenizer pipeline has been deleted rather than kept
+alongside: with one tokenizer there is no vocabulary mismatch to resolve, and
+maintaining two pipelines meant every stage had two behaviours to reason about.
+
+**Removed**
+
+- `sahf/orchestrator.py` (`FusionOrchestrator`) — fused in token space, which is
+  only meaningful under a shared vocabulary.
+- `run.py`, `config.yaml`, `demo_mock_run.py` — that pipeline's entry points.
+- `assert_shared_vocab_size` and its tests — the guard existed to protect the
+  shared-vocabulary assumption, which no longer applies. Its deliberate mirror,
+  `sahf.sheaf.assert_distinct_tokenizers`, flags the opposite mistake.
+- `tests/test_orchestrator_mock.py` — covered the removed orchestrator. The
+  equivalent robustness claim (honest majority survives a poisoned agent at N=3)
+  is covered for the current pipeline by
+  `tests/test_sheaf_orchestrator.py::test_path_b_escalates_on_a_byzantine_agent`.
+- `tests/test_sheaf.py` — dead. It imported `SoftVocabularyMapper` and a
+  `SheafReconciler(agents, reference_agent_index=...)` signature, neither of
+  which exists anywhere in the package; it was left behind by an earlier Stage 8
+  design and broke collection for the whole suite.
+
+**Ported rather than removed.** `run_batch_prompts.py`, `run_deepen_benchmark.py`
+and `run_full_evaluation_experiment.py` all used `FusionOrchestrator`, but their
+*function* — batch prompting, single-dataset evaluation, and the full
+clean-vs-poisoned sweep — is not tied to a shared tokenizer. All three now use
+`SheafOrchestrator` with `UpstreamAgent`, verify byte extraction per agent before
+starting, and read `config_sheaf.yaml`. Their record schemas keep the original
+field names so existing summaries and plots still read.
+
+**Two defects found while doing this**
+
+1. All three evaluation runners defaulted to `--config config_local.yaml`, a file
+   that has never existed in the repository. They would have failed unless a
+   config was passed explicitly. Now defaulted to `config_sheaf.yaml`.
+2. `config_sheaf.yaml` described the wrong tokenizers: TinyLlama was labelled
+   byte-level BPE ~128k and SmolLM2 sentencepiece ~256k. In fact TinyLlama is
+   SentencePiece ~32k and SmolLM2 is byte-level BPE ~49k — the labels were
+   left over from an earlier model list. Corrected.
+
+**Worth recording as an open question.** Every evaluation run committed under
+`out/runs/` names three Qwen snapshots (largely the same 3B path repeated) and
+carries no `stage8` flag, and the runners as committed called
+`assert_shared_vocab_size`, which would have rejected a mixed-family ensemble
+outright. Whatever produced the cross-tokenizer benchmark numbers is therefore
+not reproducible from this branch as it stood. The ported runners are, but the
+existing result files should not be assumed to have come from the Stage 8 path.
+
+**Kept.** `ARCHITECTURE.md` and this file remain as the historical record;
+`ARCHITECTURE.md` now carries a banner saying so. `sahf/amplitude.py`,
+`gate.py`, `fusion.py`, `robust.py`, `agents.py` and `logger.py` are all retained
+unchanged apart from the removed guard — Stage 8 uses every one of them.
+

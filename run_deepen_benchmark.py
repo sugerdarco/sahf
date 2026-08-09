@@ -1,6 +1,10 @@
 """
-DeePEn Benchmark Evaluation Script for SAHF.
-Evaluates SAHF pipeline on DeePEn dataset benchmarks (GSM8K, MMLU, ARC-Challenge, etc.).
+DeePEn Benchmark Evaluation Script for SAHF (cross-tokenizer / Stage 8).
+
+Evaluates the pipeline on DeePEn dataset benchmarks (GSM8K, MMLU, ARC-Challenge).
+Single-dataset control with per-category and poison-index selection; use
+run_full_evaluation_experiment.py for the full clean-vs-poisoned sweep with plots.
+Configured by config_sheaf.yaml.
 
 Usage:
     python run_deepen_benchmark.py --dataset gsm --max-questions 10
@@ -12,13 +16,19 @@ import argparse
 import json
 import os
 import time
+from pathlib import Path
 import torch
 import yaml
 
-from sahf.agents import HFAgent, PoisonedAgentWrapper, assert_shared_vocab_size
+from sahf.agents import HFAgent, PoisonedAgentWrapper
 from sahf.gate import GateThresholds
 from sahf.logger import RunLogger, setup_app_logging
-from sahf.orchestrator import FusionOrchestrator
+from sahf.sheaf import (
+    BytePrefixTree,
+    SheafOrchestrator,
+    UpstreamAgent,
+    assert_distinct_tokenizers,
+)
 
 
 def load_deepen_samples(dataset_type: str, category: str = None, max_questions: int = 10):
@@ -65,7 +75,7 @@ def load_deepen_samples(dataset_type: str, category: str = None, max_questions: 
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate SAHF on DeePEn benchmarks.")
-    parser.add_argument("--config", default="config_local.yaml")
+    parser.add_argument("--config", default="config_sheaf.yaml")
     parser.add_argument("--dataset", choices=["gsm", "mmlu", "arc"], default="gsm")
     parser.add_argument("--category", default="elementary_mathematics", help="Category for MMLU benchmark.")
     parser.add_argument("--max-questions", type=int, default=5, help="Number of questions to evaluate.")
@@ -83,14 +93,41 @@ def main():
     app_log.info(f"Loading agents for DeePEn benchmark evaluation: {cfg['models']}")
 
     dtype = getattr(torch, cfg["dtype"])
-    agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
+    raw_agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
 
     if args.poison_index is not None:
-        target = agents[args.poison_index]
-        agents[args.poison_index] = PoisonedAgentWrapper(target, mode=args.poison_mode)
+        target = raw_agents[args.poison_index]
+        raw_agents[args.poison_index] = PoisonedAgentWrapper(target, mode=args.poison_mode)
         app_log.info(f"POISONING agent {args.poison_index} with mode={args.poison_mode}")
 
-    shared_vocab_size = assert_shared_vocab_size(agents)
+    # Cross-tokenizer path: every agent keeps its own tokenizer and encodes the
+    # shared context itself. There is deliberately no shared-vocabulary check —
+    # a shared vocabulary is exactly what this configuration does not have.
+    agents = [UpstreamAgent(a) for a in raw_agents]
+    vocab_info = assert_distinct_tokenizers(agents)
+    app_log.info(f"Vocabularies: {vocab_info}")
+
+    # A mis-detected tokenizer scheme does not raise — it shifts every token by a
+    # leading space and silently misaligns the byte tree. Verify once, up front.
+    for a in agents:
+        if not a.verify(["The capital of France is Paris", "Question: what is 2 + 2?"]):
+            raise SystemExit(
+                f"Byte round-trip FAILED for {a.name} (scheme={a.vocab_spec().scheme}). "
+                "Results would be silently wrong; fix vocabulary extraction first."
+            )
+
+    sheaf_cfg = cfg.get("sheaf", {})
+    tree = None
+    _tp = sheaf_cfg.get("tree_path")
+    if _tp and Path(_tp).exists():
+        tree = BytePrefixTree.load(_tp)
+        if [v.name for v in tree.vocabs] != cfg["models"]:
+            raise SystemExit(
+                f"{_tp} was built for a different model list. Rebuild it with "
+                "build_prefix_tree.py, or delete it to build the tree per step."
+            )
+        app_log.info(f"Loaded prefix tree: {_tp} ({tree.n_nodes:,} nodes)")
+
     thresholds = GateThresholds(
         entropy=cfg["gate"]["entropy_threshold"],
         divergence=cfg["gate"]["divergence_threshold"],
@@ -103,17 +140,20 @@ def main():
         print(f"--------------------------------------------------")
 
         logger = RunLogger(out_dir=cfg.get("out_dir", "out"), run_label=f"deepen_{args.dataset}_{idx}")
-        orchestrator = FusionOrchestrator(
+        orchestrator = SheafOrchestrator(
             agents, thresholds,
-            max_new_tokens=cfg["max_new_tokens"],
+            max_new_bytes=sheaf_cfg.get("max_new_bytes", 256),
             mad_multiplier=cfg["gate"]["mad_multiplier"],
+            k=sheaf_cfg.get("top_k", 16),
+            min_support=sheaf_cfg.get("min_support"),
+            byte_entropy_threshold=sheaf_cfg.get("byte_entropy_threshold"),
+            tree=tree,
             logger=logger,
         )
 
-        tok = agents[0].tokenizer
-        prompt_ids = tok(sample["prompt"], return_tensors="pt").input_ids
-        output_ids, history = orchestrator.generate(prompt_ids, eos_token_id=tok.eos_token_id)
-        output_text = tok.decode(output_ids[0], skip_special_tokens=True)
+        # Text in, text out — with mismatched tokenizers there is no shared id
+        # sequence to decode.
+        output_text, history = orchestrator.generate(sample["prompt"])
 
         logger.log_final(sample["prompt"], output_text, history)
         logger.close()

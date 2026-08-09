@@ -347,7 +347,7 @@ class SheafReconciler:
     support_eps   : continuation-mass floor for an agent to have an opinion
     fusion        : "mean" (Stage 5 only), "geometric_median" (Stage 7 always),
                     or "auto" (Stage 5, escalating per node on a Stage 6 flag)
-    mad_multiplier: Stage 6 MAD multiplier; mirrors config.yaml gate.mad_multiplier
+    mad_multiplier: Stage 6 MAD multiplier; mirrors config_sheaf.yaml gate.mad_multiplier
     max_depth     : cap on prefix length to fuse
     agree_tol     : Hellinger distance below which sections count as unanimous,
                     skipping the robust machinery (mean == median when all

@@ -122,8 +122,8 @@ so the whole-step gate is partly duplicating a decision made at finer grain.
 Not fixable; recording it plainly.
 
 Stage 2 is a two-factor test: entropy `H < theta_H` **and** divergence
-`D < theta_D`. `config.yaml` sets `theta_H = 2.0` nats, calibrated (loosely — see
-`HISTORY.md`) for a ~150k-token vocabulary where the ceiling is `ln(151000) ≈ 11.9`.
+`D < theta_D`. `theta_H = 2.0` nats was calibrated (loosely — see `HISTORY.md`) for a
+~150k-token vocabulary where the ceiling is `ln(151000) ≈ 11.9`.
 
 In byte space the ceiling is `ln(256) ≈ 5.55`, and measured root entropy does not
 sit anywhere useful relative to 2.0:
@@ -147,8 +147,8 @@ first byte is usually not where the information is.
 
 **Mitigation, not a fix:**
 
-- `sheaf.byte_entropy_threshold` is now its own config key, so it no longer
-  silently inherits a token-space number.
+- `sheaf.byte_entropy_threshold` is its own config key, so it does not silently
+  inherit a token-space number.
 - Left at 2.0, because that fails toward Path B — full fusion, slower but never
   less robust.
 - The observed `entropy` is written to `steps.jsonl` on every step, so it can be
@@ -185,8 +185,7 @@ Probed and correct, no change needed:
    (it has no tokenizer, so its tokens have no byte image).
 3. Step records survive `json.dumps` — no numpy scalars leak into
    `steps.jsonl` via `RunLogger`.
-4. bfloat16 logits (the `config_sheaf.yaml` default, inherited from
-   `config.yaml`) preserve top-k probability ordering: max relative deviation
+4. bfloat16 logits (the `config_sheaf.yaml` default) preserve top-k probability ordering: max relative deviation
    from float32 is under 5%. Stage 8 only consumes the top-k, so bf16 is safe
    here — worth stating since byte-level cover mass sums many small values.
 5. The gate's tree is the tree actually used for the consensus it routes.
@@ -225,7 +224,7 @@ Stated plainly, because it is the biggest remaining risk:
 ```bash
 python audit/audit_integration.py   # 12 integration probes -> "no issues found"
 python audit/audit_stage8.py        # 22 library probes     -> "no defects found"
-pytest -q                           # 112 tests
+pytest -q                           # 118 tests
 ```
 
 Both audits exit non-zero on failure, so either can gate CI.

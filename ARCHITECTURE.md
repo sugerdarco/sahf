@@ -1,3 +1,13 @@
+> **HISTORICAL — superseded.**
+> This document describes the single-tokenizer variant (Stages 1–7 with Stage 8
+> deliberately dropped), including its "Why no Stage 8?" reasoning. That variant
+> has been removed from the repository: the project now targets only ensembles
+> whose tokenizers differ, where Stage 8 is what makes fusion defined at all.
+> It is kept unedited as the record of why the earlier design was built that way.
+>
+> For the architecture as it stands, see `SAHF_ARCHITECTURE_SPEC.md`; for Stage 8
+> specifically, `docs/STAGE8.md`.
+
 # Architecture
 
 This document describes what `sahf-lite` actually builds, how data flows through

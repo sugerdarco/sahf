@@ -4,9 +4,9 @@
 #
 # Kept as a separate file so config.yaml (Stages 1-7) is untouched.
 models:
-  - "Qwen/Qwen2.5-1.5B-Instruct"        # byte-level BPE, ~151k
-  - "TinyLlama/TinyLlama-1.1B-Chat-v1.0"  # byte-level BPE, ~128k
-  - "HuggingFaceTB/SmolLM2-360M-Instruct"              # sentencepiece, ~256k
+  - "Qwen/Qwen2.5-1.5B-Instruct"           # byte-level BPE,  ~151,936
+  - "TinyLlama/TinyLlama-1.1B-Chat-v1.0"   # SentencePiece,   ~32,000
+  - "HuggingFaceTB/SmolLM2-360M-Instruct"  # byte-level BPE,  ~49,152
 
 device: "cuda"      # use "cpu" if no GPU is available (slow, but works for testing)
 dtype: "bfloat16"   # use "float32" on CPU

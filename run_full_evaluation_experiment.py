@@ -1,6 +1,10 @@
 """
 Master Evaluation Suite and Plot Generator for SAHF vs DeePEn Benchmarks.
 
+Runs the CROSS-TOKENIZER pipeline (Stage 8): each agent keeps its own tokenizer,
+distributions are reconciled in a shared byte-prefix space, and generation emits
+bytes rather than shared token ids. Configured by config_sheaf.yaml.
+
 Runs comprehensive evaluations across GSM8K, MMLU, and ARC-Challenge under both:
 1. Clean baseline ensemble (3 honest agents)
 2. Poisoned / Adversarial ensemble (1 inverted agent, 2 honest agents)
@@ -12,15 +16,21 @@ import argparse
 import json
 import os
 import re
+from pathlib import Path
 import time
 import torch
 import yaml
 import matplotlib.pyplot as plt
 
-from sahf.agents import HFAgent, PoisonedAgentWrapper, assert_shared_vocab_size
+from sahf.agents import HFAgent, PoisonedAgentWrapper
 from sahf.gate import GateThresholds
 from sahf.logger import RunLogger, setup_app_logging
-from sahf.orchestrator import FusionOrchestrator
+from sahf.sheaf import (
+    BytePrefixTree,
+    SheafOrchestrator,
+    UpstreamAgent,
+    assert_distinct_tokenizers,
+)
 
 
 def extract_gsm_target_number(answer_str: str) -> str:
@@ -138,17 +148,45 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
 
     setup_app_logging(cfg.get("out_dir", "out"))
     dtype = getattr(torch, cfg["dtype"])
-    agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
+    raw_agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
 
     if poison:
-        agents[2] = PoisonedAgentWrapper(agents[2], mode="invert")
+        raw_agents[2] = PoisonedAgentWrapper(raw_agents[2], mode="invert")
         print("[INFO] Poisoned Agent 2 (Probability Inversion)")
 
-    shared_vocab_size = assert_shared_vocab_size(agents)
+    # Cross-tokenizer path: each agent keeps its own tokenizer and encodes the
+    # shared context itself. UpstreamAgent is the bridge; there is deliberately
+    # no shared-vocabulary assertion, because a shared vocabulary is exactly what
+    # this configuration does not have.
+    agents = [UpstreamAgent(a) for a in raw_agents]
+    vocab_info = assert_distinct_tokenizers(agents)
+    print(f"[INFO] Vocabularies: {vocab_info}")
+
+    # A mis-detected tokenizer scheme does not raise — it shifts every token by a
+    # leading space and silently misaligns the byte tree. Verify once, up front.
+    for a in agents:
+        if not a.verify(["The capital of France is Paris", "Question: what is 2 + 2?"]):
+            raise SystemExit(
+                f"Byte round-trip FAILED for {a.name} (scheme={a.vocab_spec().scheme}). "
+                "Results would be silently wrong; fix vocabulary extraction first."
+            )
+
     thresholds = GateThresholds(
         entropy=cfg["gate"]["entropy_threshold"],
         divergence=cfg["gate"]["divergence_threshold"],
     )
+    sheaf_cfg = cfg.get("sheaf", {})
+
+    tree = None
+    tree_path = Path(sheaf_cfg.get("tree_path", "")) if sheaf_cfg.get("tree_path") else None
+    if tree_path and tree_path.exists():
+        tree = BytePrefixTree.load(tree_path)
+        if [v.name for v in tree.vocabs] != cfg["models"]:
+            raise SystemExit(
+                f"{tree_path} was built for a different model list. Rebuild it with "
+                "build_prefix_tree.py, or delete it to build the tree per step."
+            )
+        print(f"[INFO] Loaded prefix tree: {tree_path} ({tree.n_nodes:,} nodes)")
 
     correct_count = 0
     total_fast_tokens = 0
@@ -161,18 +199,22 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
     for idx, sample in enumerate(samples, 1):
         run_lbl = f"eval_{dataset_name}_{'poison' if poison else 'clean'}_{idx}"
         logger = RunLogger(out_dir=cfg.get("out_dir", "out"), run_label=run_lbl)
-        orchestrator = FusionOrchestrator(
+        orchestrator = SheafOrchestrator(
             agents, thresholds,
-            max_new_tokens=cfg["max_new_tokens"],
+            max_new_bytes=sheaf_cfg.get("max_new_bytes", 256),
             mad_multiplier=cfg["gate"]["mad_multiplier"],
+            k=sheaf_cfg.get("top_k", 16),
+            min_support=sheaf_cfg.get("min_support"),
+            byte_entropy_threshold=sheaf_cfg.get("byte_entropy_threshold"),
+            tree=tree,
             logger=logger,
         )
 
-        tok = agents[0].tokenizer
-        prompt_ids = tok(sample["prompt"], return_tensors="pt").input_ids
-        output_ids, history = orchestrator.generate(prompt_ids, eos_token_id=tok.eos_token_id)
-        raw_output = tok.decode(output_ids[0], skip_special_tokens=True)
-        gen_text = raw_output[len(sample["prompt"]):].strip() if raw_output.startswith(sample["prompt"]) else raw_output.strip()
+        # Text in, text out — with mismatched tokenizers there is no shared id
+        # sequence to pass around or decode.
+        full_text, history = orchestrator.generate(sample["prompt"])
+        gen_text = full_text[len(sample["prompt"]):].strip() \
+            if full_text.startswith(sample["prompt"]) else full_text.strip()
 
         logger.log_final(sample["prompt"], gen_text, history)
         logger.close()
@@ -189,6 +231,7 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
         n_fast = sum(1 for h in history if h["path"] == "A_fast_passthrough")
         n_fusion = len(history) - n_fast
         n_escalated = sum(1 for h in history if h.get("escalated"))
+        n_bytes = sum(h.get("n_bytes", 0) for h in history)
 
         total_fast_tokens += n_fast
         total_fusion_tokens += n_fusion
@@ -205,6 +248,7 @@ def run_benchmark_eval(dataset_name: str, category: str, num_samples: int, confi
             "target_ground_truth": sample["target_parsed"],
             "is_correct": is_correct,
             "tokens": len(history),
+            "bytes_emitted": n_bytes,
             "fast_tokens": n_fast,
             "fusion_tokens": n_fusion,
             "escalated_tokens": n_escalated,
@@ -306,7 +350,7 @@ def generate_benchmark_plots(all_results):
 
 def main():
     parser = argparse.ArgumentParser(description="Run Full Evaluation Experiments across DeePEn Benchmarks")
-    parser.add_argument("--config", default="config_local.yaml")
+    parser.add_argument("--config", default="config_sheaf.yaml")
     parser.add_argument("--num-samples", type=int, default=10)
     args = parser.parse_args()
 

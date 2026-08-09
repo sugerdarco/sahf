@@ -1,7 +1,7 @@
 """
 Runs the actual SheafOrchestrator (no shortcuts) against agents with three
-DIFFERENT tokenizers, using no GPU and no internet. The Stage 8 counterpart to
-demo_mock_run.py, and it populates out/ in the same format.
+DIFFERENT tokenizers, using no GPU and no internet. Populates out/ in the same
+format as a real run.
 
 MockAgent cannot be used here. It has no tokenizer at all — it emits logits over
 an abstract vocabulary of integers — so there is no byte image for its tokens and
@@ -11,8 +11,7 @@ over the same target string at different compression ratios (6 bytes / 3 bytes /
 agent sees several bytes ahead per forward pass, the fine one only a single byte.
 
 One agent is deliberately corrupted so Stage 6/7 fire per node and the
-honest-majority recovery is visible in the logs, matching demo_mock_run.py's
-setup with N=3.
+honest-majority recovery is visible in the logs, at N=3.
 
 Usage:
     python demo_sheaf_mock_run.py

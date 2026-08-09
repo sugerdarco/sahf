@@ -2,25 +2,25 @@
 CLI entry point for a Stage 8 run with N Hugging Face agents that DO NOT share a
 tokenizer.
 
-The counterpart to run.py. That one asserts a shared vocabulary and fails loudly
-if the agents disagree about it; this one is for exactly the case that assertion
-rejects — agents from different model families, whose vocabularies have to be
-reconciled at the byte level before they can be fused at all.
+Agents from different model families, whose vocabularies have to be reconciled at
+the byte level before they can be fused at all. Their amplitude vectors are
+indexed by different token ids and are not even the same length, so there is no
+token-space fusion to fall back on.
 
 Usage:
     python run_sheaf.py --prompt "Explain the water cycle in two sentences."
     python run_sheaf.py --prompt "..." --config config_sheaf.yaml
 
-Poisoning works the same way as in run.py, and is the way to actually exercise
-Stage 6/7 inside Stage 8 rather than hoping honest models disagree enough:
+Poisoning is the way to actually exercise Stage 6/7 inside Stage 8, rather than
+hoping honest models disagree enough on their own:
 
     python run_sheaf.py --prompt "..."                                  # baseline
     python run_sheaf.py --prompt "..." --poison-index 2 --poison-mode invert
 
-Compare out/runs/*/steps.jsonl between the two. Records keep run.py's field names
-(path / escalated / entropy / divergence) and add Stage 8 fields — tree_nodes,
-fused_nodes, escalated_nodes, coverage, unreachable, stop_mass — so the same
-tooling reads both.
+Compare out/runs/*/steps.jsonl between the two. Records keep the original field
+names (path / escalated / entropy / divergence) and add Stage 8 fields —
+tree_nodes, fused_nodes, escalated_nodes, coverage, unreachable, stop_mass — so
+existing log tooling still reads them.
 
 Verification note: every agent's byte extraction is round-tripped before the run
 starts. A tokenizer whose display scheme is mis-detected does not raise, it
@@ -102,9 +102,9 @@ def main():
 
     agents = [UpstreamAgent(a) for a in raw_agents]
 
-    # Mirror of run.py's assert_shared_vocab_size, in the opposite direction:
-    # that one rejects mismatched tokenizers, this one flags the case where
-    # Stage 8 is unnecessary overhead.
+    # Flags the case where Stage 8 is unnecessary overhead: if the agents do
+    # share a tokenizer, token-level fusion would be cheaper and would not
+    # truncate to top-k.
     info = assert_distinct_tokenizers(agents)
     vocab_sizes = {name: size for name, (size, _scheme) in info.items()}
     app_log.info(f"Vocabularies: {info}")

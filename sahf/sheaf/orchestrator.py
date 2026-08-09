@@ -1,10 +1,10 @@
 """
 SheafOrchestrator — the per-token decode loop for agents with DIFFERENT tokenizers.
 
-The counterpart to `sahf.orchestrator.FusionOrchestrator`. That one assumes a
-shared tokenizer, which lets it compare amplitude vectors token-for-token and
-feed one `input_ids` tensor back to every agent. This one drops that assumption,
-so both of those steps have to change:
+The project previously carried a shared-tokenizer orchestrator, which compared
+amplitude vectors token-for-token and fed one `input_ids` tensor back to every
+agent. That variant has been removed; this one drops the shared-tokenizer
+assumption, so both of those steps work differently:
 
   comparison   agents' vectors are over different vocabularies and different
                lengths, so they are pushed onto a shared byte-prefix tree first
@@ -21,7 +21,7 @@ repo's code rather than reimplementing it:
            the agents' byte-level root sections. Same GateThresholds, same
            two-factor Path A / Path B routing.
   Stage 5  chordal mean, per tree node.
-  Stage 6  MAD outlier screen, per tree node, same `mad_multiplier` as config.yaml.
+  Stage 6  MAD outlier screen, per tree node, same `mad_multiplier` as config_sheaf.yaml.
   Stage 7  Weiszfeld geometric median, per node, only where Stage 6 fires.
 
 Stages 5/6/7 run as numpy transcriptions inside `reconciler.py` because they
@@ -62,7 +62,7 @@ class SheafOrchestrator:
     thresholds    : the same `GateThresholds` Stages 1-7 use
     weights       : per-agent fusion weights, defaults to uniform
     max_new_bytes : byte budget for `generate`, the analogue of max_new_tokens
-    mad_multiplier: Stage 6 threshold, mirrors config.yaml gate.mad_multiplier
+    mad_multiplier: Stage 6 threshold, mirrors config_sheaf.yaml gate.mad_multiplier
     k             : top-k width per agent. Default 16 on benchmark evidence --
                     quality is flat from k=8 to k=256 while cost grows 23x
                     (docs/STAGE8_BENCHMARK_RESULTS.md).
@@ -97,7 +97,7 @@ class SheafOrchestrator:
         # routing decision in practice.
         #
         # It therefore gets its own key rather than silently inheriting
-        # config.yaml's value, and the observed entropy is logged on every step so
+        # config_sheaf.yaml's value, and the observed entropy is logged on every step so
         # it can be calibrated from steps.jsonl against real models.
         self.byte_entropy_threshold = (
             thresholds.entropy if byte_entropy_threshold is None else byte_entropy_threshold
@@ -208,9 +208,8 @@ class SheafOrchestrator:
     def generate(self, prompt: str, max_new_bytes: Optional[int] = None) -> tuple:
         """Byte-level consensus generation. Returns `(text, history)`.
 
-        Note the difference from `FusionOrchestrator.generate`, which returns
-        `(output_ids, history)`: with mismatched tokenizers there is no shared id
-        sequence to return, so the output is text.
+        Returns text, not `(output_ids, history)`: with mismatched tokenizers there
+        is no shared id sequence to return.
 
         The running text is assembled with an INCREMENTAL utf-8 decoder. Consensus
         chunks are byte strings and routinely end part-way through a multi-byte

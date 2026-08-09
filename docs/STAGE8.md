@@ -1,27 +1,28 @@
 # Stage 8 — Sheaf Reconciliation
 
-The stage `sahf/__init__.py` says is "dropped because both default agents share
-one tokenizer". This adds it back, for the case where they don't.
+Stage 8 is what makes fusion defined at all when agents' tokenizers differ, which
+is the only case this repository now targets. It reuses Stages 1 and 2 directly
+and runs Stages 5/6/7 per byte-prefix-tree node.
 
-Everything here is **additive**. No file that existed before was modified — not
-`sahf/amplitude.py`, `fusion.py`, `gate.py`, `robust.py`, `agents.py`,
-`orchestrator.py`, `logger.py`, not `config.yaml`, `run.py`, `requirements.txt`
-or `pytest.ini`. The 25 existing tests pass unchanged.
+Stage 8 was originally added as a pure addition alongside a single-tokenizer
+pipeline. That pipeline has since been removed; `sahf/amplitude.py`, `fusion.py`,
+`gate.py`, `robust.py`, `agents.py` and `logger.py` are all still here and still
+unmodified, because Stage 8 depends on every one of them.
 
 ---
 
-## Why the fast version can't just be pointed at mixed models
+## Why token-space fusion cannot be pointed at mixed models
 
-`run.py` calls `assert_shared_vocab_size(agents)` and fails loudly if the
-tokenizers differ. That check is right, and Stage 8 is what you need when it
-fires. Two things break the moment vocabularies differ:
+The removed single-tokenizer pipeline asserted a shared vocabulary and refused to
+start without one. That check was right. Two things break the moment
+vocabularies differ:
 
 **Comparison.** Stages 5/6/7 operate on amplitude vectors indexed by token id.
 Qwen's token 5921 and Gemma's token 5921 are unrelated strings, and the vectors
 aren't even the same length. Averaging them is not merely inaccurate, it is
 undefined.
 
-**Feedback.** `FusionOrchestrator` appends one `token_id` and feeds the same
+**Feedback.** Token-space decoding appends one `token_id` and feeds the same
 `input_ids` to every agent. With different tokenizers there is no shared id to
 append.
 
@@ -69,9 +70,9 @@ The sheaf structure, concretely:
 | Stage | In Stage 8 |
 |---|---|
 | 1 Amplitude | **imported.** `sahf.amplitude.softmax_to_amplitude`, called in `UpstreamAgent`. |
-| 2 Divergence gate | **imported.** `sahf.gate.mean_entropy` and the same `GateThresholds`, applied in byte space. |
+| 2 Divergence gate | **imported.** `sahf.gate.mean_entropy` and `GateThresholds`, applied in byte space. |
 | 5 Mean fusion | transcribed to numpy, run **per node**. |
-| 6 Outlier check | transcribed to numpy, run **per node**, same `mad_multiplier` as `config.yaml`. |
+| 6 Outlier check | transcribed to numpy, run **per node**, same `mad_multiplier` as `config_sheaf.yaml`. |
 | 7 Geometric median | transcribed to numpy, run **per node**, only where Stage 6 fires. |
 
 Stages 5/6/7 are transcribed rather than called because they execute per tree
@@ -120,11 +121,11 @@ python run_sheaf.py --prompt "Explain the water cycle in two sentences."
 python run_sheaf.py --prompt "..." --poison-index 2 --poison-mode invert
 ```
 
-`config_sheaf.yaml` holds the Stage 8 settings; `config.yaml` is untouched.
-Poisoning, logging and `out/runs/*/steps.jsonl` work exactly as in `run.py` —
-records keep the `path` / `escalated` / `entropy` / `divergence` field names and
-add Stage 8 fields (`tree_nodes`, `fused_nodes`, `escalated_nodes`, `coverage`,
-`unreachable`, `stop_mass`, `n_bytes`, `elapsed_ms`) alongside them.
+`config_sheaf.yaml` is the only config. Records in `out/runs/*/steps.jsonl` keep
+the original `path` / `escalated` / `entropy` / `divergence` field names and add
+Stage 8 fields (`tree_nodes`, `fused_nodes`, `escalated_nodes`, `coverage`,
+`unreachable`, `stop_mass`, `n_bytes`, `elapsed_ms`) alongside them, so existing
+log tooling still reads them.
 
 In code:
 
@@ -224,11 +225,10 @@ vocabularies — offline evaluation only, never a decode loop.
   full context by design, so caching matters more than it does for Stages 1–7.
 - **`MockAgent` cannot be used.** It has no tokenizer, so its tokens have no byte
   image. Use `sahf.sheaf.StaticAgent` for offline testing.
-- **Existing docs still say Stage 8 is dropped.** No pre-existing file was
-  modified, so `sahf/__init__.py`, `sahf/orchestrator.py`, `README.md` and
-  `ARCHITECTURE.md` all still describe the single-tokenizer design.
-  `docs/STAGE8_UPSTREAM_DOCS.md` lists every stale passage, and
-  `docs/stage8_docs.patch` applies the two code-comment fixes if you want them.
+- **`ARCHITECTURE.md` and `HISTORY.md` describe the removed single-tokenizer
+  design.** They are kept deliberately as the historical record and carry a
+  banner saying so; `README.md` and `SAHF_ARCHITECTURE_SPEC.md` describe what
+  actually runs.
 - **Import cost.** `sahf/__init__.py` imports torch, so `import sahf.sheaf` pulls
   torch in even though Stage 8's own code is numpy-only. Avoidable only by
   editing `sahf/__init__.py`, which this change deliberately does not do.
@@ -244,7 +244,7 @@ sahf/sheaf/prefix_tree.py     union byte-prefix tree, vectorized cover/term mass
 sahf/sheaf/reconciler.py      local sections, Stages 5/6/7 per node, gluing
 sahf/sheaf/adapters.py        UpstreamAgent bridge, StaticAgent, DirectHFAgent
 sahf/sheaf/pipeline.py        Stage8Pipeline + diagnostics
-sahf/sheaf/orchestrator.py    SheafOrchestrator (the FusionOrchestrator analogue)
+sahf/sheaf/orchestrator.py    SheafOrchestrator — the per-token decode loop
 sahf/sheaf/demo.py            three focused offline scenarios
 
 tests/test_sheaf_parity.py           30 assertions pinning Stage 8 to Stages 1/5/6/7
@@ -258,10 +258,10 @@ tests/test_sheaf_integration_regressions.py  11 regression tests, one per
 tests/test_sheaf_prebuilt_tree.py    13 tests: artifact round-trip, sparse
                                      propagation, prebuilt decode path
 
-build_prefix_tree.py          one-time tree build -> artifacts/prefix_tree.npz
-run_sheaf.py                  CLI, mirrors run.py; loads the prebuilt tree
-demo_sheaf_mock_run.py        offline example run, mirrors demo_mock_run.py
-config_sheaf.yaml             Stage 8 settings (config.yaml untouched)
+build_prefix_tree.py          optional one-time tree build -> artifacts/prefix_tree.npz
+run_sheaf.py                  generation CLI; loads the prebuilt tree if present
+demo_sheaf_mock_run.py        offline example run
+config_sheaf.yaml             the only config
 
 audit/audit_stage8.py         22 probes over the library internals
 audit/audit_integration.py    12 probes over the integration seams
@@ -272,7 +272,7 @@ docs/STAGE8_PREBUILT_TREE.md  build-once tree: artifact, sparse propagation
 docs/STAGE8_BENCHMARK_RESULTS.md
 ```
 
-100 new tests. `pytest` collects them automatically — `pytest.ini` is unchanged.
+118 tests in total. `pytest` collects them automatically — `pytest.ini` is unchanged.
 
 Optional dependency: `tokenizers>=0.15`, only for
 `tests/test_sheaf_real_tokenizers.py` and the benchmarks. It is skipped when

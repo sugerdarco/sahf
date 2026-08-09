@@ -107,7 +107,7 @@ for spread in (0.0, 0.5, 1.0):
 # byte is near-deterministic (very common) and 2.3-2.7 nats when it is not, against
 # a token-space theta_H of 2.0 and a ceiling of ln(256)=5.55. That is a property of
 # the space, not a fixable defect, so what is asserted is the mitigation: the
-# threshold must not silently inherit config.yaml's value, and the observed entropy
+# threshold must not silently inherit config_sheaf.yaml's value, and the observed entropy
 # must be logged so it can be calibrated against real models.
 orch_probe = SheafOrchestrator(simple_agents(), GateThresholds(entropy=2.0), k=16)
 check(
@@ -281,7 +281,7 @@ check(
     "bfloat16 logits preserve top-k ordering adequately",
     rel < 0.05,
     f"max relative deviation {rel:.3f} between float32 and bfloat16 probabilities "
-    "(config_sheaf.yaml defaults to bfloat16, inherited from config.yaml)",
+    "(config_sheaf.yaml defaults to bfloat16)",
 )
 
 # =====================================================================

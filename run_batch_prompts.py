@@ -1,6 +1,9 @@
 """
-Batch prompt evaluation script for SAHF.
-Loads models ONCE into memory and runs inference sequentially across multiple prompts.
+Batch prompt evaluation script for SAHF (cross-tokenizer / Stage 8).
+
+Loads models ONCE into memory and runs inference sequentially across multiple
+prompts. Each agent keeps its own tokenizer; generation emits bytes, which are
+reconciled in a shared byte-prefix space. Configured by config_sheaf.yaml.
 
 Usage:
     python run_batch_prompts.py --prompts-file prompts.txt
@@ -11,18 +14,24 @@ import argparse
 import json
 import os
 import time
+from pathlib import Path
 import torch
 import yaml
 
-from sahf.agents import HFAgent, PoisonedAgentWrapper, assert_shared_vocab_size
+from sahf.agents import HFAgent, PoisonedAgentWrapper
 from sahf.gate import GateThresholds
 from sahf.logger import RunLogger, setup_app_logging
-from sahf.orchestrator import FusionOrchestrator
+from sahf.sheaf import (
+    BytePrefixTree,
+    SheafOrchestrator,
+    UpstreamAgent,
+    assert_distinct_tokenizers,
+)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Run batch prompts through SAHF pipeline (models loaded once).")
-    parser.add_argument("--config", default="config_local.yaml", help="Path to config yaml file.")
+    parser.add_argument("--config", default="config_sheaf.yaml", help="Path to config yaml file.")
     parser.add_argument("--prompts-file", default="prompts.txt", help="Text file containing prompts (one per line).")
     parser.add_argument("--run-label", default="batch_eval", help="Label for batch output folder.")
     parser.add_argument("--poison-index", type=int, default=None,
@@ -49,14 +58,14 @@ def main():
     app_log.info(f"Loading agents ONCE for batch run: {cfg['models']}")
 
     dtype = getattr(torch, cfg["dtype"])
-    agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
+    raw_agents = [HFAgent(name, device=cfg["device"], dtype=dtype) for name in cfg["models"]]
 
     poison_info = None
     if args.poison_index is not None:
-        if not (0 <= args.poison_index < len(agents)):
-            raise ValueError(f"--poison-index {args.poison_index} out of range for {len(agents)} agents.")
-        target = agents[args.poison_index]
-        agents[args.poison_index] = PoisonedAgentWrapper(
+        if not (0 <= args.poison_index < len(raw_agents)):
+            raise ValueError(f"--poison-index {args.poison_index} out of range for {len(raw_agents)} agents.")
+        target = raw_agents[args.poison_index]
+        raw_agents[args.poison_index] = PoisonedAgentWrapper(
             target, mode=args.poison_mode, bias_strength=args.poison_strength,
         )
         poison_info = {
@@ -67,8 +76,33 @@ def main():
         }
         app_log.info(f"POISONING agent {args.poison_index} ({target.name}) with mode={args.poison_mode}")
 
-    shared_vocab_size = assert_shared_vocab_size(agents)
-    app_log.info(f"Shared vocab size confirmed: {shared_vocab_size}")
+    # Cross-tokenizer path: every agent keeps its own tokenizer and encodes the
+    # shared context itself. There is deliberately no shared-vocabulary check —
+    # a shared vocabulary is exactly what this configuration does not have.
+    agents = [UpstreamAgent(a) for a in raw_agents]
+    vocab_info = assert_distinct_tokenizers(agents)
+    app_log.info(f"Vocabularies: {vocab_info}")
+
+    # A mis-detected tokenizer scheme does not raise — it shifts every token by a
+    # leading space and silently misaligns the byte tree. Verify once, up front.
+    for a in agents:
+        if not a.verify(["The capital of France is Paris", "Question: what is 2 + 2?"]):
+            raise SystemExit(
+                f"Byte round-trip FAILED for {a.name} (scheme={a.vocab_spec().scheme}). "
+                "Results would be silently wrong; fix vocabulary extraction first."
+            )
+
+    sheaf_cfg = cfg.get("sheaf", {})
+    tree = None
+    _tp = sheaf_cfg.get("tree_path")
+    if _tp and Path(_tp).exists():
+        tree = BytePrefixTree.load(_tp)
+        if [v.name for v in tree.vocabs] != cfg["models"]:
+            raise SystemExit(
+                f"{_tp} was built for a different model list. Rebuild it with "
+                "build_prefix_tree.py, or delete it to build the tree per step."
+            )
+        app_log.info(f"Loaded prefix tree: {_tp} ({tree.n_nodes:,} nodes)")
 
     thresholds = GateThresholds(
         entropy=cfg["gate"]["entropy_threshold"],
@@ -93,17 +127,20 @@ def main():
             "poisoning": poison_info,
         })
 
-        orchestrator = FusionOrchestrator(
+        orchestrator = SheafOrchestrator(
             agents, thresholds,
-            max_new_tokens=cfg["max_new_tokens"],
+            max_new_bytes=sheaf_cfg.get("max_new_bytes", 256),
             mad_multiplier=cfg["gate"]["mad_multiplier"],
+            k=sheaf_cfg.get("top_k", 16),
+            min_support=sheaf_cfg.get("min_support"),
+            byte_entropy_threshold=sheaf_cfg.get("byte_entropy_threshold"),
+            tree=tree,
             logger=logger,
         )
 
-        tok = agents[0].tokenizer
-        prompt_ids = tok(prompt, return_tensors="pt").input_ids
-        output_ids, history = orchestrator.generate(prompt_ids, eos_token_id=tok.eos_token_id)
-        output_text = tok.decode(output_ids[0], skip_special_tokens=True)
+        # Text in, text out — with mismatched tokenizers there is no shared id
+        # sequence to decode.
+        output_text, history = orchestrator.generate(prompt)
 
         logger.log_final(prompt, output_text, history)
         logger.close()

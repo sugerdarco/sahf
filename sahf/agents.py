@@ -85,7 +85,7 @@ class PoisonedAgentWrapper:
     adversarial condition instead of hoping honest models happen to disagree
     enough. Never used silently — the orchestrator has no special-case for
     this class, it just looks like one more agent whose logits happen to be
-    bad; wrapping is something you opt into explicitly (see run.py
+    bad; wrapping is something you opt into explicitly (see run_sheaf.py
     --poison-index) and it is always recorded in the run's meta.json.
 
     Modes:
@@ -134,26 +134,3 @@ class PoisonedAgentWrapper:
             return logits
 
         raise AssertionError("unreachable")  # mode validated in __init__
-
-
-def assert_shared_vocab_size(agents: List) -> int:
-    """
-    Fails loudly (not silently) if configured agents don't share a vocabulary —
-    this whole prototype's correctness depends on that assumption (see
-    ARCHITECTURE.md, "Why no Stage 8?"). Returns the shared vocab size so
-    callers can log it.
-
-    Uses each agent's `.vocab_size` attribute rather than `len(agent.tokenizer)`
-    directly, since MockAgent (and PoisonedAgentWrapper wrapping one) has no
-    real tokenizer object but still has a well-defined vocab size.
-    """
-    if len(agents) < 2:
-        raise ValueError("Need at least 2 agents.")
-    sizes = {agent.vocab_size for agent in agents}
-    if len(sizes) != 1:
-        details = ", ".join(f"{a.name}={a.vocab_size}" for a in agents)
-        raise ValueError(
-            "Agents do not share a vocabulary size — the fast version assumes a shared "
-            f"tokenizer (no Stage 8 reconciliation). Got: {details}"
-        )
-    return sizes.pop()

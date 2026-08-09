@@ -69,23 +69,31 @@ the gate is not honest.
 
 ---
 
-## 3. Two configurations
+## 3. Scope — cross-tokenizer only
 
-The pipeline has two forms, selected by one question: **do the agents share a
-tokenizer?**
+This system targets ensembles whose agents **do not share a tokenizer**. That is
+the case where fusion is not merely inaccurate but undefined: the agents'
+amplitude vectors are indexed by different token ids and are not even the same
+length, so there is nothing to average until a shared space exists.
 
-| | Homogeneous | Heterogeneous |
-|---|---|---|
-| Precondition | all agents share one tokenizer | tokenizers differ |
-| Comparison space | token ids | byte prefixes |
-| Stages 1–7 operate on | full vocabulary vectors | per-node byte conditionals |
-| Stage 8 | not required | required, and Stages 5/6/7 run inside it |
-| Feedback to agents | one shared token id | consensus **bytes**, re-encoded per agent |
-| Emitted unit | one token | a byte chunk (one or more bytes) |
+| | This system |
+|---|---|
+| Precondition | tokenizers differ across agents |
+| Comparison space | byte prefixes |
+| Stages 1–7 operate on | per-node byte conditionals |
+| Stage 8 | required, and Stages 5/6/7 run inside it |
+| Feedback to agents | consensus **bytes**, re-encoded by each agent |
+| Emitted unit | a byte chunk (one or more bytes) |
+
+An earlier variant of this project handled the shared-tokenizer case by fusing
+directly in token space and skipping Stage 8 entirely. It has been removed: with
+one tokenizer there is no vocabulary mismatch to resolve, and carrying two
+pipelines meant every stage had two behaviours to reason about. Where a stage
+below behaves differently because the space is bytes rather than tokens, that is
+noted as **byte-space behaviour**.
 
 **Ordering note.** The pipeline diagram places Stage 8 last. That reflects its
-role as the translation back into token space. But in the heterogeneous
-configuration, Stage 8 must also come *first*: the agents' amplitude vectors are
+role as the translation back into token space. But Stage 8 must also come *first*: the agents' amplitude vectors are
 indexed by different token ids and are not the same length, so there is no fused
 object to reconcile — the fusion cannot be computed until the shared space
 exists. Stage 8 therefore **brackets** Stages 5/6/7 rather than following them:
@@ -113,8 +121,8 @@ strictly weaker claim. N = 2 runs correctly and demonstrates nothing.
 and are normalised at point of use. Uniform weights are the default; unequal
 weights are meaningful for Stages 5 and 7 but do not change any threshold.
 
-**Heterogeneous configuration:** each agent encodes the *shared context text* with
-its own tokenizer. There is no shared id sequence.
+**Byte-space behaviour:** each agent encodes the *shared context text* with its
+own tokenizer. There is no shared id sequence at any point.
 
 ---
 
@@ -163,7 +171,7 @@ distributions, it has already paid the cost it exists to avoid. In a
 single-machine deployment full vectors are already local and this distinction is
 invisible; **in a distributed deployment it is the entire point.**
 
-**Heterogeneous configuration:** the gate operates on byte-level sections. `H` is
+**Byte-space behaviour:** the gate operates on byte-level sections. `H` is
 the entropy of the consensus distribution over the next byte. `D` is the maximum
 pairwise spread **over every active node of the tree, not the root** — byte-level
 tokenizers place a leading space on most word-initial tokens, so distributions
@@ -193,7 +201,7 @@ vector.
 Agreement is the common case for most tokens in most sequences, which is what
 makes the whole design economical.
 
-**Heterogeneous configuration:** Path A means "fuse with the plain mean; skip the
+**Byte-space behaviour:** Path A means "fuse with the plain mean; skip the
 outlier screen and the robust estimator." It cannot skip constructing the shared
 byte space, because without it there is nothing to read a token off.
 
@@ -307,7 +315,7 @@ clearly separated adversarial agent.
 | **Input** | per-agent distribution `p⁽ⁱ⁾` over its own vocabulary; all vocabularies |
 | **Output** | consensus byte string; per-agent distributions back in token space |
 | **Parameters** | `k`, `ε` (mass floor), `min_support`, `max_depth`, decode beam and length, byte-space `θ_H` |
-| **Required when** | tokenizers differ. Pure overhead when they do not |
+| **Required when** | always, in this system — it is what makes fusion defined at all |
 
 Without a shared base space, "token *v*" does not denote the same string across
 agents, and their amplitude vectors are not even the same length. Fusion is not

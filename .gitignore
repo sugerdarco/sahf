@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# generated benchmark artifacts — rebuilt by benchmarks/train_bench_tokenizers.py
+benchmarks/corpus.txt
+benchmarks/tokenizers/
+
+# prefix-tree artifact — rebuilt by build_prefix_tree.py
+artifacts/

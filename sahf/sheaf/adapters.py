@@ -337,13 +337,12 @@ class UpstreamAgent:
 
 
 def assert_distinct_tokenizers(agents, *, strict: bool = False) -> dict:
-    """The Stage 8 counterpart to `sahf.agents.assert_shared_vocab_size`.
+    """Flags an ensemble that does not actually need Stage 8.
 
-    `run.py` fails loudly when agents do NOT share a vocabulary, because Stages
-    1-7 silently produce nonsense in that case. The inverse is worth checking
-    too: if every agent really does share a tokenizer, Stage 8 is pure overhead
-    and `run.py` is the faster, more accurate path — token-level fusion loses
-    nothing to byte-level truncation.
+    If every agent really does share a tokenizer, byte-level reconciliation is
+    pure overhead: token-level fusion would be faster and would not truncate to
+    top-k. This project targets the mismatched case, so that situation almost
+    certainly means the wrong models were configured.
 
     That is a performance note rather than a correctness bug, so by default this
     warns rather than raising. Pass ``strict=True`` to make it an error.
@@ -365,8 +364,8 @@ def assert_distinct_tokenizers(agents, *, strict: bool = False) -> dict:
     if len(fingerprints) == 1:
         msg = (
             "All agents share one tokenizer, so there is no vocabulary mismatch "
-            "for Stage 8 to resolve. run.py (Stages 1-7) is faster here and does "
-            f"not truncate to top-k. Vocabularies: {info}"
+            "for Stage 8 to resolve — this is almost certainly a misconfigured "
+            f"model list. Vocabularies: {info}"
         )
         if strict:
             raise ValueError(msg)
